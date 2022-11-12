@@ -42,15 +42,22 @@ try {
 
     $FlashArray = Connect-Pfa2Array @connectionParams -IgnoreCertificateError 
 
-    # Perform the volume overwrite (no intermediate snapshot needed!)
-    Write-Host "Overwriting the dev instance's volume with a fresh copy from production..." -ForegroundColor Red
+    try {
 
-    $newVolumeParams = @{
-        VolumeName = 'MyVirtualMachineName-data-volume'
-        SourceName = 'MyProduction-data-volume'
+        # Perform the volume overwrite (no intermediate snapshot needed!)
+        Write-Host "Overwriting the dev instance's volume with a fresh copy from production..." -ForegroundColor Red
+
+        $newVolumeParams = @{
+            VolumeName = 'MyVirtualMachineName-data-volume'
+            SourceName = 'MyProduction-data-volume'
+        }
+
+        New-Pfa2Volume @newVolumeParams -Array $FlashArray -Overwrite $true
+
     }
-
-    New-Pfa2Volume @newVolumeParams -Array $FlashArray -Overwrite $true
+    finally {
+        Disconnect-Pfa2Array $FlashArray
+    }
 
     Invoke-Command -Session $TargetVMSession -ScriptBlock {
 
