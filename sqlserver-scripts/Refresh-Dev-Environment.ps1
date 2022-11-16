@@ -1,42 +1,80 @@
-Import-Module PureStoragePowerShellSDK
+#Requires -Version 5
+
+#Requires -Modules PureStoragePowerShellSDK2
+
 # Refresh a dev database in a few seconds!
 
-$TargetVM = 'MyVirtualMachineName'
+$TargetVMSession = New-PSSession -ComputerName 'MyVirtualMachineName'
 
-$TargetVMSession = New-PSSession -ComputerName $TargetVM
+try {
 
-Import-Module SQLPS -PSSession $TargetVMSession -DisableNameChecking
+    Import-Module SQLPS -PSSession $TargetVMSession -DisableNameChecking
 
-Write-Host "Actual development instance downtime begins now." -ForegroundColor Red
+    Write-Host "Actual development instance downtime begins now." -ForegroundColor Red
 
-# Offline the database
-Write-Host "Offlining the database..." -ForegroundColor Red
-Invoke-Command -Session $TargetVMSession -ScriptBlock { Invoke-Sqlcmd -ServerInstance . -Database master -Query "ALTER DATABASE MyDatabase SET OFFLINE WITH ROLLBACK IMMEDIATE" }
+    Invoke-Command -Session $TargetVMSession -ScriptBlock {
 
-# Offline the volume
-Write-Host "Offlining the volume..." -ForegroundColor Red
-Invoke-Command -Session $TargetVMSession -ScriptBlock { Get-Disk | ? { $_.SerialNumber -eq 'E33DF4A38D50A72500012265' } | Set-Disk -IsOffline $True }
+        $diskSerialNumbers = @('E33DF4A38D50A72500012265')
+        $sqlServerInstance = '.'
+        $databaseName = 'MyDatabase'
 
-# Connect to the FlashArray's REST API, get a session going
-# THIS IS A SAMPLE SCRIPT WE USE FOR DEMOS! _PLEASE_ do not save your password in cleartext here. 
-# Use NTFS secured, encrypted files or whatever else -- never cleartext!
-Write-Host "Establishing a session against the Pure Storage FlashArray..." -ForegroundColor Red
-$FlashArray = New-PfaArray –EndPoint 10.128.0.2 -UserName myusername -Password (ConvertTo-SecureString -AsPlainText "mypassword" -Force) -IgnoreCertificateError
+        # Offline the database
+        Write-Host "Offlining the database..." -ForegroundColor Red
+        Invoke-Sqlcmd -ServerInstance $sqlServerInstance -Query "ALTER DATABASE $databaseName SET OFFLINE WITH ROLLBACK IMMEDIATE"
 
-# Perform the volume overwrite (no intermediate snapshot needed!)
-Write-Host "Overwriting the dev instance's volume with a fresh copy from production..." -ForegroundColor Red
-New-PfaVolume -Array $FlashArray -VolumeName MyVirtualMachineName-data-volume -Source MyProduction-data-volume -Overwrite
+        # Offline the volume
+        Write-Host "Offlining volumes..." -ForegroundColor Red
+        Get-Disk | ? { $_.SerialNumber -in $diskSerialNumbers } | Set-Disk -IsOffline $true
 
-# Online the volume
-Write-Host "Onlining the volume..." -ForegroundColor Red
-Invoke-Command -Session $TargetVMSession -ScriptBlock { Get-Disk | ? { $_.SerialNumber -eq 'E33DF4A38D50A72500012265' } | Set-Disk -IsOffline $False }
+    }
 
-# Online the database
-Write-Host "Onlining the database..." -ForegroundColor Red
-Invoke-Command -Session $TargetVMSession -ScriptBlock { Invoke-Sqlcmd -ServerInstance . -Database master -Query "ALTER DATABASE MyDatabase SET ONLINE WITH ROLLBACK IMMEDIATE" }
+    # Connect to the FlashArray's REST API, get a session going
+    Write-Host "Establishing a session against the Pure Storage FlashArray..." -ForegroundColor Red
 
-Write-Host "Development database downtime ended." -ForegroundColor Red
+    $connectionParams = @{
+        EndPoint = 10.128.0.2
+        Username = 'myusername'
+    
+        # THIS IS A SAMPLE SCRIPT WE USE FOR DEMOS! _PLEASE_ do not save your password in cleartext here. 
+        # Use NTFS secured, encrypted files or whatever else -- never cleartext!
+        Password = ConvertTo-SecureString -String 'mypassword' -AsPlainText -Force
+    }
 
-# Clean up
-Remove-PSSession $TargetVMSession
+    $FlashArray = Connect-Pfa2Array @connectionParams -IgnoreCertificateError 
+
+    try {
+
+        # Perform the volume overwrite (no intermediate snapshot needed!)
+        Write-Host "Overwriting the dev instance's volume with a fresh copy from production..." -ForegroundColor Red
+
+        $newVolumeParams = @{
+            VolumeName = 'MyVirtualMachineName-data-volume'
+            SourceName = 'MyProduction-data-volume'
+        }
+
+        New-Pfa2Volume @newVolumeParams -Array $FlashArray -Overwrite $true
+
+    }
+    finally {
+        Disconnect-Pfa2Array $FlashArray
+    }
+
+    Invoke-Command -Session $TargetVMSession -ScriptBlock {
+
+        # Online the volume
+        Write-Host "Onlining volumes..." -ForegroundColor Red
+        Get-Disk | ? { $_.SerialNumber -in $diskSerialNumbers } | Set-Disk -IsOffline $False 
+
+        # Online the database
+        Write-Host "Onlining the database..." -ForegroundColor Red
+        Invoke-Sqlcmd -ServerInstance $sqlServerInstance  -Query "ALTER DATABASE $databaseName SET ONLINE WITH ROLLBACK IMMEDIATE" 
+
+    }
+}
+finally {
+    Write-Host "Development database downtime ended." -ForegroundColor Red
+    # Clean up
+    Remove-PSSession $TargetVMSession
+}
+
 Write-Host "All done." -ForegroundColor Red
