@@ -1,0 +1,25 @@
+name: Merge scripts to PSM1
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run merge script
+        run: ./Build/BuildPsm.ps1
+
+      - name: Upload PowerShell module files
+        uses: actions/upload-artifact@v3
+        with:
+          name: PSModule
+          path: out
+          retention-days: 1
