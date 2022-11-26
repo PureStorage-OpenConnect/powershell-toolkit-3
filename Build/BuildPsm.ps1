@@ -68,10 +68,10 @@ function Merge-Module {
 
             '# Declare exports' | Out-File -Append $psmPath
 
-            $manifest.FunctionsToExport | % { "Export-ModuleMemebr -Function $_" } | Out-File -Append $psmPath
-            $manifest.VariablesToExport | % { "Export-ModuleMemebr -Variable $_" } | Out-File -Append $psmPath
-            $manifest.AliasesToExport   | % { "Export-ModuleMemebr -Alias $_" }    | Out-File -Append $psmPath
-            $manifest.CmdletsToExport   | % { "Export-ModuleMemebr -Cmdlet $_" }   | Out-File -Append $psmPath
+            $manifest.FunctionsToExport | % { "Export-ModuleMember -Function $_" } | Out-File -Append $psmPath
+            $manifest.VariablesToExport | % { "Export-ModuleMember -Variable $_" } | Out-File -Append $psmPath
+            $manifest.AliasesToExport   | % { "Export-ModuleMember -Alias $_" }    | Out-File -Append $psmPath
+            $manifest.CmdletsToExport   | % { "Export-ModuleMember -Cmdlet $_" }   | Out-File -Append $psmPath
 
             '# END' | Out-File -Append $psmPath
         }
