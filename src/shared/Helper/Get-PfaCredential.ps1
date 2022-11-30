@@ -36,7 +36,7 @@ function Get-PfaCredential {
 
     param ()
 
-    Set-Creds $script:Creds
+    Set-PfaCredential $script:Creds
     $script:Creds
 }
 
