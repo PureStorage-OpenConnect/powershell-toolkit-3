@@ -17,22 +17,21 @@ function Get-FlashArrayQuickCapacityStats() {
     .NOTES
     The arrays supplied in the "Arrays" parameter must use the same credentials for access.
 
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credentail variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string[]] $Arrays
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string[]] $Arrays,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-
-    # Get credentials for all endpoints
-    $cred = Get-Creds
 
     # Connect to FlashArray(s)
     $connections = @()
     foreach ($Array in $Arrays) {
         try {
-            $flashArray = Connect-Pfa2Array -Endpoint $Array -Credential $cred -IgnoreCertificateError
+            $flashArray = Connect-Pfa2Array -Endpoint $Array -Credential $Credential -IgnoreCertificateError
             $connections += $flashArray
         }
         catch {

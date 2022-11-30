@@ -13,17 +13,19 @@ function Get-AllHostVolumeInfo() {
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com.
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter()]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
     # Connect to FlashArray
     try {
-        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential (Get-Creds) -IgnoreCertificateError
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
     catch {
         $exceptionMessage = $_.Exception.Message

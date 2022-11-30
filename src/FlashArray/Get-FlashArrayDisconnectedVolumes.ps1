@@ -13,17 +13,21 @@ function Get-FlashArrayDisconnectedVolumes() {
     .EXAMPLE
     Get-FlashArrayDisconnectedVolumes -EndPoint myArray
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Get-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint
+        [Parameter(Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string] $EndPoint,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
     # Connect to FlashArray
     try {
-        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential (Get-Creds) -IgnoreCertificateError
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
     catch {
         $exceptionMessage = $_.Exception.Message

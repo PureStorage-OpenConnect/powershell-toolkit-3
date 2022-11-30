@@ -2,9 +2,9 @@
     ===========================================================================
     Created by:   	FlashArray Integrations and Evangelism Team @ Pure Storage
     Organization: 	Pure Storage, Inc.
-    Filename:     	PureStoragePowerShellToolkit.psd1
+    Filename:     	PureStorage.Toolkit.WinAdmin.psd1
     Copyright:		(c) 2022 Pure Storage, Inc.
-    Module Name: 	PureStoragePowerShellToolkit
+    Module Name: 	PureStorage.Toolkit.WinAdmin
     Description: 	PowerShell Script Module Manifest (.psd1)
     -------------------------------------------------------------------------
     Disclaimer
