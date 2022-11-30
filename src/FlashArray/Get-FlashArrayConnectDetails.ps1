@@ -14,17 +14,21 @@ function Get-FlashArrayConnectDetails() {
     Get-FlashArrayConnectDetails.ps1 -EndPoint myArray
     .NOTES
     This cmdlet does not allow for use of OAUth authentication, only token authentication. Arrays with maximum API versions of 2.0 or 2.1 must use OAuth authentication. This will be added in a later revision.
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint
+        [Parameter(Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string] $EndPoint,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
     # Connect to FlashArray
     try {
-        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential (Get-Creds) -IgnoreCertificateError
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
     catch {
         $exceptionMessage = $_.Exception.Message

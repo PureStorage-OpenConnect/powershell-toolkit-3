@@ -2,9 +2,9 @@
     ===========================================================================
     Created by:   	FlashArray Integrations and Evangelism Team @ Pure Storage
     Organization: 	Pure Storage, Inc.
-    Filename:     	PureStoragePowerShellToolkit.psd1
+    Filename:     	PureStorage.Toolkit.FlashArray.psd1
     Copyright:		(c) 2022 Pure Storage, Inc.
-    Module Name: 	PureStoragePowerShellToolkit
+    Module Name: 	PureStorage.Toolkit.FlashArray
     Description: 	PowerShell Script Module Manifest (.psd1)
     -------------------------------------------------------------------------
     Disclaimer
@@ -89,15 +89,17 @@ NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-        'Get-FlashArrayDisconnectedVolumes',
-        'Get-FlashArrayArraySpace',
-        'Get-FlashArrayPgroupsConfig',
-        'Get-FlashArrayConfig',
-        'Get-FlashArrayHierarchy',
-        'Get-FlashArrayQuickCapacityStats',
-        'Get-FlashArrayVolumeGrowth',
-        'Get-FlashArrayConnectDetails'
-)
+		'Get-AllHostVolumeInfo',
+		'Get-FlashArrayDisconnectedVolumes',
+		'Get-FlashArraySpace',
+		'Get-FlashArrayPgroupsConfig',
+		'Get-FlashArrayConfig',
+		'Get-FlashArrayHierarchy',
+		'Get-FlashArrayQuickCapacityStats',
+		'Get-FlashArrayVolumeGrowth',
+		'Get-FlashArrayConnectDetails',
+		'Remove-FlashArrayPendingDeletes'
+		)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

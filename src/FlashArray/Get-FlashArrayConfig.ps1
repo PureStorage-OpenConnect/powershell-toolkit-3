@@ -20,21 +20,18 @@ function Get-FlashArrayConfig() {
     Retrieves the configuration for a FlashArray and stores it in the current path as Array100_config.txt.
 
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string] $EndPoint,
         [Parameter(Mandatory = $False)][string] $OutFile = "Array_Config.txt",
-        [Parameter(Mandatory = $False)][string] $ArrayName
+        [Parameter(Mandatory = $False)][string] $ArrayName = $EndPoint,
+        [Parameter()][pscredential]$Credential = ( Get-PfaCredential )
     )
-
-    $cred = Get-Creds
-
-    If (!$ArrayName) {
-        $ArrayName = $EndPoint
-    }
 
     "==================================================================================" | Out-File -FilePath $OutFile -Append
     "FlashArray Configuration Export for: $($ArrayName)" | Out-File -FilePath $OutFile -Append
@@ -45,10 +42,10 @@ function Get-FlashArrayConfig() {
     Write-Host "Retrieving FlashArray OBJECT configuration export (host-pod-volume-hgroup-connection)..."
     "FlashArray OBJECT configuration export (host-pod-volume-hgroup-connection)..." | Out-File -FilePath $OutFile -Append
     " " | Out-File -FilePath $OutFile -Append
-    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $cred -CommandText $invokeCommand_pureconfig_list_object | Out-File -FilePath $OutFile -Append
+    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $Credential -CommandText $invokeCommand_pureconfig_list_object | Out-File -FilePath $OutFile -Append
     Write-Host "Retrieving FlashArray SYSTEM configuration export (array-network-alert-support)..."
     "FlashArray SYSTEM configuration export (array-network-alert-support):" | Out-File -FilePath $OutFile -Append
     " " | Out-File -FilePath $OutFile -Append
-    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $cred -CommandText $invokeCommand_pureconfig_list_system | Out-File -FilePath $OutFile -Append
+    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $Credential -CommandText $invokeCommand_pureconfig_list_system | Out-File -FilePath $OutFile -Append
     Write-Host "FlashArray configuration file located in $Outfile." -ForegroundColor Green
 }

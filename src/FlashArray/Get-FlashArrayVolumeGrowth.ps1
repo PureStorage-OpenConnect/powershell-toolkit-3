@@ -36,7 +36,7 @@ function Get-FlashArrayVolumeGrowth() {
     .NOTES
     All arrays specified must use the same credential login.
 
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
@@ -48,18 +48,17 @@ function Get-FlashArrayVolumeGrowth() {
         [Parameter(Mandatory = $False)][string] $DoNotReportGrowthOfLessThan = '1',
         [Parameter(Mandatory = $False)][string] $DoNotReportVolSmallerThan = '1GB',
         [Parameter(Mandatory = $False)][switch] $csv,
-        [Parameter(Mandatory = $False)][switch] $html
+        [Parameter(Mandatory = $False)][switch] $html,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-
-    # Get credentials for all endpoints
-    $cred = Get-Creds
 
     # Connect to FlashArray(s)
     $connections = @{}
     $volThatBreachGrowthPercentThreshold = @()
     foreach ($array in $Arrays) {
         try {
-            $flashArray = Connect-Pfa2Array -Endpoint $array -Credential $cred -IgnoreCertificateError
+            $flashArray = Connect-Pfa2Array -Endpoint $array -Credential $Credential -IgnoreCertificateError
             $connections.add($array, $flashArray)
         }
         catch {
