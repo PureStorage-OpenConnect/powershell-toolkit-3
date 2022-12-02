@@ -10,6 +10,8 @@ function Update-DriveInformation() {
     Required. Drive lettwre without the colon.
     .PARAMETER NewDriveLabel
     Optional. Drive label text. Defaults to "NewDrive".
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
     .INPUTS
     None
     .OUTPUTS
@@ -19,18 +21,27 @@ function Update-DriveInformation() {
 
     Updates the drive letter from M: to S: and labels S: to NewDrive.
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
         [Parameter(Mandatory = $True)][string]$NewDriveLetter,
         [Parameter(Mandatory = $True)][string]$CurrentDriveLetter,
-        [Parameter(Mandatory = $False)][string]$NewDriveLabel = "NewDrive"
-        )
+        [Parameter(Mandatory = $False)][string]$NewDriveLabel = 'NewDrive',
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
+    )
 
-    $Drive = Get-WmiObject -Class Win32_Volume | Where-Object { $_.DriveLetter -eq "$($CurrentDriveLetter):" }
-    if (!($NewDriveLabel)) {
-        Set-WmiInstance -Input $Drive -Arguments @{ DriveLetter = "$($NewDriveLetter):" } | Out-Null
+    $params = @{
+        Query    = "SELECT * FROM Win32_Volume WHERE DriveLetter = '$CurrentDriveLetter`:"
+        Property = @{ DriveLetter = "$($NewDriveLetter):" }
     }
-    else {
-        Set-WmiInstance -Input $Drive -Arguments @{ DriveLetter = "$($NewDriveLetter):"; Label = "$($NewDriveLabel)" } | Out-Null
+
+    if ($NewDriveLabel) {
+        $params.Property.Add('Label', $NewDriveLabel)
     }
+
+    if ($PSBoundParameters.ContainsKey('CimSession')) {
+        $params.Add('CimSession', $CimSession)
+    }
+
+    Set-CimInstance @params | Out-Null
 }
