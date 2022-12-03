@@ -25,7 +25,7 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-# RootModule = 'PureStorage.Toolkit.Dba.psm1'
+RootModule = 'PureStorage.Toolkit.Dba.psm1'
 
 # Version number of this module.
 

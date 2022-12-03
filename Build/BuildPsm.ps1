@@ -41,7 +41,10 @@ function Merge-Module {
         }
 
         $psmPath = New-Item (Join-Path $OutPath $fullName) -ItemType Directory -Force
-        $manifestFile = Copy-Item $ManifestPath (Join-Path $psmPath "$fullName.psd1") -PassThru
+        Copy-Item $ManifestPath (Join-Path $psmPath "$fullName.psd1") -PassThru
+
+        if(-not $manifest.RootModule) { return }
+
         $psmPath = Join-Path $psmPath $manifest.RootModule
 
         $sourcePath = Join-Path 'src' $shortName
@@ -79,12 +82,9 @@ function Merge-Module {
 }
 
 $moduleParams = @{
-    OutPath = if (Test-Path 'out') {
-        Get-Item 'out'
-    }
-    else {
-        New-Item -Name 'out' -ItemType Directory
-    }
+    OutPath = New-Item -Name 'out' -ItemType Directory -Force
 }
+
+Remove-Item -Recurse (Join-Path $moduleParams.OutPath '*')
 
 Get-ChildItem '*.psd1' | Merge-Module @moduleParams
