@@ -63,9 +63,16 @@ function Disable-SecureChannelProtocol {
     )
 
     process {
-        Push-Location 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
 
         try {
+            if (-not $PSCmdlet.ShouldProcess(
+                    $ProtocolName,
+                    "Disable secure channel protocol")) {
+                return 
+            }
+
+            Push-Location 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
+
             if (-not ( Test-Path $ProtocolName )) {
                 New-Item -Path $ProtocolName | Out-Null
             }
@@ -120,9 +127,16 @@ function Enable-SecureChannelProtocol {
     )
 
     process {
-        Push-Location 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
 
         try {
+            if (-not $PSCmdlet.ShouldProcess(
+                    $ProtocolName,
+                    "Enable secure channel protocol")) {
+                return 
+            }
+
+            Push-Location 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
+
             if (-not ( Test-Path $ProtocolName )) {
                 New-Item -Path $ProtocolName | Out-Null
             }
@@ -164,6 +178,8 @@ function Enable-SecureChannelProtocol {
 function Set-TlsVersions {
     [CmdletBinding(SupportsShouldProcess)]
     param (
+        [Parameter(ValueFromPipeline)]
+        [Version]$MinVersion = '1.2',
         [switch]$SkipBackup,
         [IO.FileInfo]$BackupFilePath = 'protocols.reg',
         [switch]$Force,
@@ -182,11 +198,16 @@ function Set-TlsVersions {
     $key = 'HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
 
     if (-not $SkipBackup) {
-        Backup-RegistryKey -KeyPath $key -BackupFilePath $BackupFilePath @PSBoundParameters | Out-Null
+        Backup-RegistryKey -KeyPath $key -BackupFilePath $BackupFilePath -Force:$Force | Out-Null
     }
 
-    Disable-SecureChannelProtocol 'TLS 1.0'
-    Disable-SecureChannelProtocol 'TLS 1.1'
-    Enable-SecureChannelProtocol 'TLS 1.2'
-    Enable-SecureChannelProtocol 'TLS 1.3'
+    for ($m = 0; $m -lt 4; $m++) {
+        $v = [Version]::new(1, $m)
+        if ($v -lt $MinVersion) {
+            Disable-SecureChannelProtocol "TLS $v"
+        }
+        else {
+            Enable-SecureChannelProtocol "TLS $v"
+        }
+    }
 }
