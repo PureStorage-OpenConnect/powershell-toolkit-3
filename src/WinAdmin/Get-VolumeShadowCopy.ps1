@@ -35,12 +35,16 @@ function Get-VolumeShadowCopy() {
         [ValidateSet("On", "Off")][string]$VerboseMode = "On"
     )
     $dsh = "./$ScriptName.PFA"
-    "SET VERBOSE $VerboseMode",
-    'RESET',
-    "LOAD METADATA $MetadataFile.cab",
-    'IMPORT',
-    "EXPOSE %$ShadowCopyAlias% $ExposeAs",
-    'EXIT' | Set-Content $dsh
-    DISKSHADOW /s $dsh
-    Remove-Item $dsh
+    try {
+        "SET VERBOSE $VerboseMode",
+        "RESET",
+        "LOAD METADATA $MetadataFile.cab",
+        "IMPORT",
+        "EXPOSE %$ShadowCopyAlias% $ExposeAs",
+        "EXIT" | Set-Content $dsh
+        DISKSHADOW /s $dsh
+    }
+    finally {
+        Remove-Item $dsh -ErrorAction SilentlyContinue
+    }
 }
