@@ -18,25 +18,27 @@ function Get-MPIODiskLBPolicy() {
     #>
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $False)][string]$DiskId
+        [Parameter(Mandatory = $False, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [string]$DiskId
     )
-    function Invoke-mpclaim($param1, $param2, $param3) {
-        . mpclaim.exe $param1 $param2 $param3
-    }
-    #Checks whether mpclaim.exe is available.
-    $exists = Test-Path "$env:systemroot\System32\mpclaim.exe"
-    if (-not ($exists)) {
-        Write-Host "mpclaim.exe not found. Is MultiPathIO enabled? Exiting." -ForegroundColor Yellow
-        break
-    }
-    if ($DiskId) {
-        Write-Host "Getting current MPIO Load Balancing Policy for DiskID " + $DiskId -ForegroundColor Green
-        $result = Invoke-mpclaim -param1 "-s" -param2 "-d" -param3 $DiskId
-        return $result
-    }
-    else {
-        Write-Host "Getting current MPIO Load Balancing Policy for all MPIO disks." -ForegroundColor Green
-        $result = Invoke-mpclaim -param1 "-s" -param2 "-d"
-        return $result
+
+    process {
+        #Checks whether mpclaim.exe is available.
+        $exists = Test-Path "$env:systemroot\System32\mpclaim.exe"
+        if (-not ($exists)) {
+            Write-Error 'mpclaim.exe not found. Is MultiPathIO enabled? Exiting.' -ErrorAction Stop
+        }
+
+        $expr = "mpclaim.exe -s -d "
+
+        if ($DiskId) {
+            Write-Host "Getting current MPIO Load Balancing Policy for DiskID $DiskId" -ForegroundColor Green
+            $expr += $DiskId
+        }
+        else {
+            Write-Host 'Getting current MPIO Load Balancing Policy for all MPIO disks.' -ForegroundColor Green
+        }
+
+        Invoke-Expression $expr
     }
 }
