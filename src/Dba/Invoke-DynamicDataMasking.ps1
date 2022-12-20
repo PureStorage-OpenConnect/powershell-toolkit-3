@@ -38,12 +38,12 @@ Invoke-DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-
 .NOTES
 Note that it has dependencies on the dbatools and PureStoragePowerShellSDK  modules which are installed as part of this module.
 #>
+	[CmdletBinding()]
     param(
-        [parameter(mandatory = $true)][string] $SqlInstance,
-        [parameter(mandatory = $true)][string] $Database
+        [parameter(mandatory = $true)][Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
+        [parameter(mandatory = $true)][string] $Database,
+		[parameter(mandatory = $false)][pscredential] $SqlCredential
     )
-
-    Get-DbaToolsModule
 
     $sql = @"
 BEGIN
@@ -94,5 +94,5 @@ BEGIN
 END;
 "@
 
-    Invoke-DbaSqlQuery -SqlInstance $SqlInstance -Database $Database -Query $sql
+    Invoke-DbaQuery -Query $sql @PSBoundParameters
 }

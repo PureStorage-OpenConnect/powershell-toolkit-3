@@ -24,74 +24,60 @@ Invoke-StaticDataMasking -SqlInstance  Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-
 .NOTES
 Note that it has dependencies on the dbatools module which are installed with this module.
 #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
-        [parameter(mandatory = $true)] [string] $SqlInstance,
+        [parameter(mandatory = $true)] [Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
         [parameter(mandatory = $true)] [string] $Database,
-        [parameter(mandatory = $true)] [string] $DataMaskFile
+        [parameter(mandatory = $true)] [string] $DataMaskFile,
+        [parameter()] [pscredential] $SqlCredential,
+        [parameter()] [string[]] $Table
     )
 
-    Get-DbaToolsModule
+    $queryParams = @{
+        SqlInstance = $SqlInstace
+        Database = $Database
+        QueryTimeout = 999999
+    }
+
+    if ($PSBoundParameters.ContainsKey('SqlCredential')) {
+        $queryParams.Add('SqlCredential', $SqlCredential)
+    }
 
     if ($DataMaskFile.ToString().StartsWith('http')) {
-        $tables = Invoke-RestMethod -Uri $DataMaskFile
+        $config = Invoke-RestMethod -Uri $DataMaskFile
     }
     else {
-        # Check if the destination is accessible
-        if (-not (Test-Path -Path $DataMaskFile)) {
-            Write-Error "Could not find data mask config file $DataMaskFile"
-            Return
-        }
+        $config = Get-Content -Path $DataMaskFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     }
 
-    # Get all the items that should be processed
-    try {
-        $tables = Get-Content -Path $DataMaskFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-    }
-    catch {
-        Write-Error "Could not parse masking config file: $DataMaskFile" -ErrorRecord $_
-    }
-
-    foreach ($tabletest in $tables.Tables) {
-        if ($Table -and $tabletest.Name -notin $Table) {
+    foreach ($tabletest in $config.Tables) {
+        if (($Table -and $tabletest.Name -notin $Table) -or -not $PSCmdlet.ShouldProcess("[$($tabletest.Name)]", 'Statically mask table')){
             continue
         }
 
-        $ColumnIndex = 0
-        $UpdateStatement = ""
-
-        foreach ($columntest in $tabletest.Columns) {
-            if ($columntest.ColumnType -in 'varchar', 'char', 'nvarchar') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+        $columnExpressions = $tabletest.Columns.foreach{
+            $column = $_
+            $statement = switch($column.ColumnType) {
+                {$_ -in 'varchar', 'char', 'nvarchar'} {
+                    "SUBSTRING(CONVERT(VARCHAR, HASHBYTES('MD5', $($column.Name)), 1), 1, $($column.MaxValue))"
                 }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+                'int' {
+                    "ABS(CHECKSUM(NEWID())) % 2147483647"
                 }
-            }
-            elseif ($columntest.ColumnType -eq 'int') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                'bigint' {
+                    "ABS(CHECKSUM(NEWID()))"
                 }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                default {
+                    Write-Error "$($column.ColumnType) is not supported, please remove the column $($column.Name) from the $($table.Name) table"
                 }
             }
-            elseif ($columntest.ColumnType -eq 'bigint') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
-                }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
-                }
-            }
-            else {
-                Write-Error "$columntest.ColumnType is not supported, please remove the column $columntest.Name from the $tabletest.Name table"
-                Return
-            }
-            $ColumnIndex += 1
+            
+            "$($column.Name) = $statement"
         }
 
-        Write-Verbose "Statically masking table $tabletest.Name using $UpdateStatement"
-        Invoke-DbaQuery -ServerInstance $SqlInstance -Database $Database -Query $UpdateStatement -QueryTimeout 999999
+        $queryParams['Query'] = "UPDATE $($tabletest.Name) SET $($columnExpressions -join ', ')"
+
+        Write-Verbose "Statically masking table $($tabletest.Name) using $UpdateStatement"
+        Invoke-DbaQuery @queryParams
     }
 }

@@ -36,101 +36,98 @@ Known Restrictions
 Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modules which are installed as part of this module.
 #>
     param(
+        [parameter(mandatory = $true)] [Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
         [parameter(mandatory = $true)] [string] $Database,
-        [parameter(mandatory = $true)] [string] $SqlInstance,
-        [parameter(mandatory = $true)] [string] $Endpoint
+        [parameter(mandatory = $true)] [string] $Endpoint,
+        [parameter()] [pscredential] $SqlCredential,
+        [Parameter()] [pscredential] $Credential = ( Get-PfaCredential )
     )
 
-    Get-Sdk1Module
-    Get-DbaToolsModule
+    $sqlParams = @{
+        SqlInstance = $SqlInstance
+    }
 
-    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-
-    if ( ! $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) ) {
-        Write-Error "This function needs to be invoked within a PowerShell session with elevated admin rights"
-        Return
+    if ($PSBoundParameters.ContainsKey('SqlCredential')) {
+        $sqlParams.Add('SqlCredential', $SqlCredential)
     }
 
     # Connect to FlashArray
-    if (!($Creds)) {
+    try {
+        $flashArray = Connect-Pfa2Array -EndPoint $EndPoint -Credentials $Credential -IgnoreCertificateError
+    }
+    catch {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $exceptionMessage"
+        Return
+    }
+
+    try {
+        Write-Colour -Text 'FlashArray endpoint       : ', 'CONNECTED' -Color Yellow, Green
+
         try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
+            $destDb = Get-DbaDatabase @sqlParams -Database $Database
         }
         catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to connect to destination database $SqlInstance.$Database with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target SQL Server instance: ', $SqlInstance, ' - ', 'CONNECTED' -Color Yellow, Green, Green, Green
+        Write-Colour -Text 'Target windows drive      : ', $destDb.PrimaryFilePath.Split(':')[0] -Color Yellow, Green
+
+        try {
+            $sqlInstance = Connect-DbaInstance @sqlParams
+            $targetServer = $SqlInstance.ComputerNamePhysicalNetBIOS
+            $sqlInstance | Disconnect-DbaInstance 
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine target server name with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target SQL Server host    : ', $targetServer -ForegroundColor Yellow, Green
+
+        $getDbDisk = { param ( $filePath )
+            $dbDisk = Get-Partition -DriveLetter $filePath.Split(':')[0] | Get-Disk
+            return $dbDisk
+        }
+
+        try {
+            $targetDisk = Invoke-Command -ComputerName $targetServer -ScriptBlock $getDbDisk -ArgumentList $destDb.PrimaryFilePath
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine the windows disk snapshot target with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target disk serial number : ', $targetDisk.SerialNumber -Color Yellow, Green
+
+        try {
+            $targetVolume = (Get-Pfa2Volume -Array $flashArray | Where-Object { $_.serial -eq $targetDisk.SerialNumber }).Name
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine snapshot FlashArray volume with: $exceptionMessage"
+            Return
+        }
+
+        $snapshotSuffix = '{0}-{1}-{2:HHmmss}' -f $SqlInstance.FullName.Replace('\', '-'), $Database, (Get-Date)
+        Write-Colour -Text 'Snapshot target Pfa volume: ', $targetVolume -Color Yellow, Green
+        Write-Colour -Text 'Snapshot suffix           : ', $snapshotSuffix -Color Yellow, Green
+
+        try {
+            New-Pfa2VolumeSnapshot -Array $flashArray -Sources $targetVolume -Suffix $snapshotSuffix
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to create snapshot for target database FlashArray volume with: $exceptionMessage"
             Return
         }
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-
-    Write-Colour -Text "FlashArray endpoint       : ", "CONNECTED" -Color Yellow, Green
-
-    try {
-        $DestDb = Get-DbaDatabase -SqlInstance $SqlInstance -Database $Database
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to connect to destination database $SqlInstance.$Database with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Colour -Text "Target SQL Server instance: ", $SqlInstance, " - ", "CONNECTED" -Color Yellow, Green, Green, Green
-    Write-Colour -Text "Target windows drive      : ", $DestDb.PrimaryFilePath.Split(':')[0] -Color Yellow, Green
-
-    try {
-        $TargetServer = (Connect-DbaInstance -SqlInstance $SqlInstance).ComputerNamePhysicalNetBIOS
-    }
-    catch {
-        Write-Error "Failed to determine target server name with: $ExceptionMessage"
-    }
-
-    Write-Colour -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
-
-    $GetDbDisk = { param ( $Db )
-        $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
-        return $DbDisk
-    }
-
-    try {
-        $TargetDisk = Invoke-Command -ComputerName $TargetServer -ScriptBlock $GetDbDisk -ArgumentList $DestDb
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine the windows disk snapshot target with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Colour -Text "Target disk serial number : ", $TargetDisk.SerialNumber -Color Yellow, Green
-
-    try {
-        $TargetVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $TargetDisk.SerialNumber } | Select-Object name
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine snapshot FlashArray volume with: $ExceptionMessage"
-        Return
-    }
-
-    $SnapshotSuffix = $SqlInstance.Replace('\', '-') + '-' + $Database + '-' + $(Get-Date).Hour + $(Get-Date).Minute + $(Get-Date).Second
-    Write-Colour -Text "Snapshot target Pfa volume: ", $TargetVolume.name -Color Yellow, Green
-    Write-Colour -Text "Snapshot suffix           : ", $SnapshotSuffix -Color Yellow, Green
-
-    try {
-        New-PfaVolumeSnapshots -Array $FlashArray -Sources $TargetVolume.name -Suffix $SnapshotSuffix
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to create snapshot for target database FlashArray volume with: $ExceptionMessage"
-        Return
+    finally {
+        Disconnect-Pfa2Array $flashArray
     }
 }
