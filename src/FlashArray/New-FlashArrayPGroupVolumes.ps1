@@ -23,39 +23,38 @@ function New-FlashArrayPGroupVolumes() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
     Param (
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()][string] $EndPoint,
         [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $PGroupPrefix,
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $VolumeSizeGB,
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $NumberOfVolumes
+        [Parameter(Mandatory = $True)][ValidateRange(1, [int]::MaxValue)][int] $VolumeSizeGB,
+        [Parameter(Mandatory = $True)][ValidateRange(1, [int]::MaxValue)][int] $NumberOfVolumes,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-    Get-Sdk1Module
+
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
     }
-    $Volumes = @()
-    for ($i = 1; $i -le $NumberOfVolumes; $i++) {
-        New-PfaVolume -Array $FlashArray -VolumeName "$PGroupPrefix-Vol$i" -Unit G -Size $VolumeSizeGB
-        $Volumes += "$PGroupPrefix-Vol$i"
+
+    try {
+        $volumes = ( 1..$NumberOfVolumes ) |
+        foreach { "$PGroupPrefix-Vol$_" } |
+        New-Pfa2Volume -Array $FlashArray -Provisioned ($VolumeSizeGB * 1GB)
+
+        $group = New-Pfa2ProtectionGroup -Array $FlashArray -Name "$PGroupPrefix-PGroup"
+
+        New-Pfa2ProtectionGroupVolume -Array $FlashArray -MemberNames $volumes.name -GroupNames $group.Name
     }
-    $Volumes -join ","
-    New-PfaProtectionGroup -Array $FlashArray -Name "$PGGroupPrefix-PGroup" -Volumes $Volumes
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
+    }
 }

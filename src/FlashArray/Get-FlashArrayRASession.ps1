@@ -17,40 +17,38 @@ function Get-FlashArrayRASession() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-    Get-Sdk1Module
+
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    catch {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $exceptionMessage"
+        Return
     }
 
-    While ($true) {
-        If ((Get-PfaRemoteAssistSession -Array $FlashArray).Status -eq 'disabled') {
-            Set-PfaRemoteAssistStatus -Array $FlashArray -Action connect
-        }
-        else {
-            Write-Warning "Remote Assist session is not active."
-            Start-Sleep 30
-        }
+    try {
+        Write-Host 'Testing remote assist connectivity'
+        do {
+            $test = Get-Pfa2SupportTest -Array $flashArray -TestType 'remote-assist'
+            If ($test.Success) {
+                Write-Host $test.ResultDetails
+            } else {
+                Write-Warning $test.ResultDetails
+                Start-Sleep 30
+            }
+        } until ($test.Success)
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 }

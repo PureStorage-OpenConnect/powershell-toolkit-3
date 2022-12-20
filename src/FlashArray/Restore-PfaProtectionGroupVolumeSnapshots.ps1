@@ -1,5 +1,5 @@
 function Restore-PfaPGroupVolumeSnapshots() {
-	<#
+    <#
     .SYNOPSIS
     Recover all of the volumes from a protection group (PGroup) snapshot.
     .DESCRIPTION
@@ -24,27 +24,44 @@ function Restore-PfaPGroupVolumeSnapshots() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
-	Param (
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $Array,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $ProtectionGroup,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SnapshotName,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $PGroupPrefix,
-		[Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $Hostname
+    Param (
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $ProtectionGroup,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SnapshotName,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $Prefix,
+        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $Hostname,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
+    )
 
-	)
+    # Connect to FlashArray
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
+    }
 
-    $PGroupVolumes = Get-PfaProtectionGroup -Array $Array -Name $ProtectionGroup -Session $Session
-    $PGroupSnapshotsSet = $SnapshotName
-
-    ForEach ($PGroupVolume in $PGroupVolumes)
-    {
-        For($i=0;$i -lt $PGroupVolume.volumes.Count;$i++)
-        {
-            $NewPGSnapshotVol = ($PGroupVolume.volumes[$i]).Replace($PGroupVolume.source+":",$Prefix+"-")
-            $Source = ($PGroupSnapshotsSet+"."+$PGroupVolumes.volumes[$i]).Replace($PGroupVolume.source+":","")
-            New-PfaVolume -Array $Array -VolumeName $NewPGSnapshotVol -Source $Source
-            New-PfaHostVolumeConnection -Array $array -HostName $Hostname -VolumeName $NewPGSnapshotVol
+    try {
+        $groups = Get-Pfa2ProtectionGroup -Array $flashArray -Name $ProtectionGroup
+        foreach ($group in $groups) {
+            $volumes = Get-Pfa2ProtectionGroupVolume -Array $connection -GroupNames $group.Name | select -ExpandProperty 'Member'
+            foreach ($volume in $volumes) {
+                $name = $volume.Name.Replace($group.Source.Name + '::', '')
+                $volumeName = "$Prefix-$name"
+                $source = "$SnapshotName.$name"
+                New-Pfa2Volume -Array $flashArray -Name $volumeName -SourceName $source
+                if ($Hostname) {
+                    New-Pfa2Connection -Array $flashArray -HostNames $Hostname -VolumeNames $volumeName
+                }
+            }
         }
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 }
