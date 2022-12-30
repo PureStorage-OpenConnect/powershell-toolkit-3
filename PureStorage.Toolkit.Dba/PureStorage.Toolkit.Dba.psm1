@@ -1,3 +1,331 @@
+#region Helper functions
+
+function Convert-Size {
+    <#
+    .SYNOPSIS
+    Converts volume sizes from B to MB, MB, GB, TB.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle conversions.
+    .INPUTS
+    ConvertFrom (Mandatory)
+    ConvertTo (Mandatory)
+    Value (Mandatory)
+    Precision (Optional)
+    .OUTPUTS
+    Converted size of volume.
+    #>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertFrom,
+        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertTo,
+        [Parameter(Mandatory = $true)][Double]$Value,
+        [Parameter(Mandatory = $false)][Int]$Precision = 4
+    )
+
+    switch ($ConvertFrom) {
+        "Bytes" { $value = $Value }
+        "KB" { $value = $Value * 1024 }
+        "MB" { $value = $Value * 1024 * 1024 }
+        "GB" { $value = $Value * 1024 * 1024 * 1024 }
+        "TB" { $value = $Value * 1024 * 1024 * 1024 * 1024 }
+    }
+
+    switch ($ConvertTo) {
+        "Bytes" { return $value }
+        "KB" { $Value = $Value / 1KB }
+        "MB" { $Value = $Value / 1MB }
+        "GB" { $Value = $Value / 1GB }
+        "TB" { $Value = $Value / 1TB }
+    }
+
+    return [Math]::Round($Value, $Precision, [MidPointRounding]::AwayFromZero)
+}
+
+function ConvertTo-Base64() {
+<#
+    .SYNOPSIS
+	Converts source file to Base64.
+    .DESCRIPTION
+	Helper function
+	Supporting function to handle conversions.
+    .INPUTS
+	Source (Mandatory)
+    .OUTPUTS
+	Converted source.
+#>
+    Param (
+        [Parameter(Mandatory = $true)][String] $Source
+    )
+    return [Convert]::ToBase64String((Get-Content $Source -Encoding byte))
+}
+function Get-HypervStatus() {
+    <#
+    .SYNOPSIS
+	Confirms that the HyperV role is installed ont he server.
+    .DESCRIPTION
+	Helper function
+	Supporting function to ensure proper role is installed.
+    .OUTPUTS
+	Error on missing HyperV role.
+    #>
+    $hypervStatus = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V).State
+    if ($hypervStatus -ne "Enabled") {
+        Write-Host "Hyper-V is not running. This cmdlet must be run on a Hyper-V host."
+        break
+    }
+}
+function Set-PfaCredential {
+    <#
+    .SYNOPSIS
+    Sets credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Nothing
+    #>
+    
+    [CmdletBinding()]
+    [OutputType([void])]
+
+    param (
+        [Parameter(Mandatory)]
+        [System.Management.Automation.Credential()]
+        [pscredential]$Credential
+    )
+
+    $script:Creds = $Credential
+}
+
+function Get-PfaCredential {
+    <#
+    .SYNOPSIS
+    Gets credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Credentials
+    #>
+    
+    [OutputType([pscredential])]
+
+    param ()
+
+    Set-PfaCredential $script:Creds
+    $script:Creds
+}
+
+function Clear-PfaCredential {
+    <#
+    .SYNOPSIS
+    Clears credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Nothing
+    #>
+    
+    [OutputType([void])]
+
+    $script:Creds = $null
+}
+
+function Get-SdkModule() {
+    <#
+    .SYNOPSIS
+	Confirms that PureStoragePowerShellSDK version 2 module is loaded, present, or missing. If missing, it will download it and import. If internet access is not available, the function will error.
+    .DESCRIPTION
+	Helper function
+	Supporting function to load required module.
+    .OUTPUTS
+	PureStoragePowerShellSDK version 2 module.
+    #>
+
+    $m = "PureStoragePowerShellSDK2"
+    # If module is imported, continue
+    if (Get-Module | Where-Object { $_.Name -eq $m }) {
+    }
+    else {
+        # If module is not imported, but available on disk, then import
+        if (Get-InstalledModule | Where-Object { $_.Name -eq $m }) {
+            Import-Module $m -ErrorAction SilentlyContinue
+        }
+        else {
+            # If module is not imported, not available on disk, then install and import
+            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
+                Write-Warning "The $m module does not exist."
+                Write-Host "We will attempt to install the module from the PowerShell Gallery. Please wait..."
+                Install-Module -Name $m -Force -ErrorAction SilentlyContinue -Scope CurrentUser
+                Import-Module $m -ErrorAction SilentlyContinue
+            }
+            else {
+                # If module is not imported, not available on disk, and we cannot access it online, then abort
+                Write-Host "Module $m not imported, not available on disk, and we are not able to download it from the online gallery... Exiting."
+                EXIT 1
+            }
+        }
+    }
+}
+
+function New-FlashArrayReportPieChart() {
+<#
+    .SYNOPSIS
+	Creates graphic pie chart .png image file for use in report.
+    .DESCRIPTION
+	Helper function
+	Supporting function to create a pie chart.
+    .OUTPUTS
+	piechart.png.
+#>
+    Param (
+        [string]$FileName,
+        [float]$SnapshotSpace,
+        [float]$VolumeSpace,
+        [float]$CapacitySpace
+    )
+
+    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
+
+    $chart = New-Object System.Windows.Forms.DataVisualization.charting.chart
+    $chart.Width = 700
+    $chart.Height = 500
+    $chart.Left = 10
+    $chart.Top = 10
+
+    $chartArea = New-Object System.Windows.Forms.DataVisualization.charting.chartArea
+    $chart.chartAreas.Add($chartArea)
+    [void]$chart.Series.Add("Data")
+
+    $legend = New-Object system.Windows.Forms.DataVisualization.charting.Legend
+    $legend.Name = "Legend"
+    $legend.Font = "Verdana"
+    $legend.Alignment = "Center"
+    $legend.Docking = "top"
+    $legend.Bordercolor = "#FE5000"
+    $legend.Legendstyle = "row"
+    $chart.Legends.Add($legend)
+
+    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $SnapshotSpace)
+    $datapoint.AxisLabel = "SnapShots " + "(" + $SnapshotSpace + " MB)"
+    $chart.Series["Data"].Points.Add($datapoint)
+
+    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $VolumeSpace)
+    $datapoint.AxisLabel = "Volumes " + "(" + $VolumeSpace + " GB)"
+    $chart.Series["Data"].Points.Add($datapoint)
+
+    $chart.Series["Data"].chartType = [System.Windows.Forms.DataVisualization.charting.SerieschartType]::Doughnut
+    $chart.Series["Data"]["DoughnutLabelStyle"] = "Outside"
+    $chart.Series["Data"]["DoughnutLineColor"] = "#FE5000"
+
+    $Title = New-Object System.Windows.Forms.DataVisualization.charting.Title
+    $chart.Titles.Add($Title)
+    $chart.SaveImage($FileName + ".png", "png")
+}
+#endregion Helper functions
+
+function Invoke-DynamicDataMasking {
+    <#
+.SYNOPSIS
+A PowerShell function to apply data masks to database columns using the SQL Server dynamic data masking feature.
+
+.DESCRIPTION
+This function uses the information stored in the extended properties of a database:
+sys.extended_properties.name = 'DATAMASK' to obtain the dynamic data masking function to apply
+at column level. Columns of the following data type are currently supported:
+
+- int
+- bigint
+- char
+- nchar
+- varchar
+- nvarchar
+
+Using the c_address column in the tpch customer table as an example, the DATAMASK extended property can be applied
+to the column as follows:
+
+exec sp_addextendedproperty
+     @name = N'DATAMASK'
+    ,@value = N'(FUNCTION = 'partial(0, "XX", 20)''
+    ,@level0type = N'Schema', @level0name = 'dbo'
+    ,@level1type = N'Table',  @level1name = 'customer'
+    ,@level2type = N'Column', @level2name = 'c_address'
+GO
+
+.PARAMETER SqlInstance
+Required. The SQL Server instance of the database that data masking is to be applied to.
+
+.PARAMETER Database
+Required. The database that data masking is to be applied to.
+
+.EXAMPLE
+Invoke-DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression
+
+.NOTES
+Note that it has dependencies on the dbatools and PureStoragePowerShellSDK  modules which are installed as part of this module.
+#>
+    param(
+        [parameter(mandatory = $true)][string] $SqlInstance,
+        [parameter(mandatory = $true)][string] $Database
+    )
+
+    Get-DbaToolsModule
+
+    $sql = @"
+BEGIN
+	DECLARE  @sql_statement nvarchar(1024)
+	        ,@error_message varchar(1024)
+
+	DECLARE apply_data_masks CURSOR FOR
+	SELECT       'ALTER TABLE ' + tb.name + ' ALTER COLUMN ' + c.name +
+			   + ' ADD MASKED WITH '
+			   + CAST(p.value AS char) + ''')'
+	FROM       sys.columns c
+	JOIN       sys.types t
+	ON         c.user_type_id = t.user_type_id
+	LEFT JOIN  sys.index_columns ic
+	ON         ic.object_id = c.object_id
+	AND        ic.column_id = c.column_id
+	LEFT JOIN  sys.indexes i
+	ON         ic.object_id = i.object_id
+	AND        ic.index_id  = i.index_id
+	JOIN       sys.tables tb
+	ON         tb.object_id = c.object_id
+	JOIN       sys.extended_properties AS p
+	ON         p.major_id   = tb.object_id
+	AND        p.minor_id   = c.column_id
+	AND        p.class      = 1
+	WHERE      t.name IN ('int', 'bigint', 'char', 'nchar', 'varchar', 'nvarchar');
+
+	OPEN apply_data_masks
+	FETCH NEXT FROM apply_data_masks INTO @sql_statement;
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+	    PRINT 'Applying data mask: ' + @sql_statement;
+
+		BEGIN TRY
+		    EXEC sp_executesql @stmt = @sql_statement
+		END TRY
+		BEGIN CATCH
+		    SELECT @error_message = ERROR_MESSAGE();
+			PRINT 'Application of data mask failed with: ' + @error_message;
+		END CATCH;
+
+		FETCH NEXT FROM apply_data_masks INTO @sql_statement
+	END;
+
+	CLOSE apply_data_masks
+	DEALLOCATE apply_data_masks;
+END;
+"@
+
+    Invoke-DbaSqlQuery -SqlInstance $SqlInstance -Database $Database -Query $sql
+}
 function Invoke-FlashArrayDbRefresh {
 <#
 .SYNOPSIS
@@ -528,3 +856,238 @@ function DbRefresh {
     Repair-DbaDbOrphanUser -SqlInstance $DestSqlInstance -Database $RefreshDatabase | Out-Null
     Write-Color -Text "Orphaned users            : ", "REPAIRED" -ForegroundColor Yellow, Green
 }
+function Invoke-StaticDataMasking {
+<#
+.SYNOPSIS
+A PowerShell function to statically mask data in char, varchar and/or nvarchar columns using a MD5 hashing function.
+
+.DESCRIPTION
+This PowerShell function uses as input a JSON file created by calling the New-DbaDbMaskingConfig PowerShell function.
+Data in the columns specified in this file which are of the type char, varchar or nvarchar are envrypted using a MD5
+hash.
+
+.PARAMETER SqlInstance
+Required. The SQL Server instance of the database that static data masking is to be applied to.
+
+.PARAMETER Database
+Required. The database that static data masking is to be applied to.
+
+.PARAMETER DataMaskFile
+Required. Absolute path to the JSON file generated by invoking New-DbaDbMaskingConfig. The file can be subsequently editted by
+hand to suit the data masking requirements of this function's user. Currently, static data masking is only supported for columns with char, varchar, nvarchar, int and bigint data types.
+
+.EXAMPLE
+Invoke-StaticDataMasking -SqlInstance  Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -DataMaskFile 'C:\Users\devops\Documents\tpch-no-compression.tables.json'
+
+.NOTES
+Note that it has dependencies on the dbatools module which are installed with this module.
+#>
+    param(
+        [parameter(mandatory = $true)] [string] $SqlInstance,
+        [parameter(mandatory = $true)] [string] $Database,
+        [parameter(mandatory = $true)] [string] $DataMaskFile
+    )
+
+    Get-DbaToolsModule
+
+    if ($DataMaskFile.ToString().StartsWith('http')) {
+        $tables = Invoke-RestMethod -Uri $DataMaskFile
+    }
+    else {
+        # Check if the destination is accessible
+        if (-not (Test-Path -Path $DataMaskFile)) {
+            Write-Error "Could not find data mask config file $DataMaskFile"
+            Return
+        }
+    }
+
+    # Get all the items that should be processed
+    try {
+        $tables = Get-Content -Path $DataMaskFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Could not parse masking config file: $DataMaskFile" -ErrorRecord $_
+    }
+
+    foreach ($tabletest in $tables.Tables) {
+        if ($Table -and $tabletest.Name -notin $Table) {
+            continue
+        }
+
+        $ColumnIndex = 0
+        $UpdateStatement = ""
+
+        foreach ($columntest in $tabletest.Columns) {
+            if ($columntest.ColumnType -in 'varchar', 'char', 'nvarchar') {
+                if ($ColumnIndex -eq 0) {
+                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+                }
+                else {
+                    $UpdateStatement += ', ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+                }
+            }
+            elseif ($columntest.ColumnType -eq 'int') {
+                if ($ColumnIndex -eq 0) {
+                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                }
+                else {
+                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                }
+            }
+            elseif ($columntest.ColumnType -eq 'bigint') {
+                if ($ColumnIndex -eq 0) {
+                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
+                }
+                else {
+                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
+                }
+            }
+            else {
+                Write-Error "$columntest.ColumnType is not supported, please remove the column $columntest.Name from the $tabletest.Name table"
+                Return
+            }
+            $ColumnIndex += 1
+        }
+
+        Write-Verbose "Statically masking table $tabletest.Name using $UpdateStatement"
+        Invoke-DbaQuery -ServerInstance $SqlInstance -Database $Database -Query $UpdateStatement -QueryTimeout 999999
+    }
+}
+function New-FlashArrayDbSnapshot {
+    <#
+.SYNOPSIS
+A PowerShell function to create a FlashArray snapshot of the volume that a database resides on.
+
+.DESCRIPTION
+A PowerShell function to create a FlashArray snapshot of the volume that a database resides on, based in the
+values of the following parameters:
+
+.PARAMETER Database
+Required. The name of the database to refresh, note that it is assumed that source and target database(s) are named the same.
+
+.PARAMETER SqlInstance
+Required. This can be one or multiple SQL Server instance(s) that host the database(s) to be refreshed, in the case that the
+function is invoked  to refresh databases  across more than one instance, the list of target instances should be
+spedcified as an array of strings, otherwise a single string representing the target instance will suffice.
+
+.PARAMETER Endpoint
+Required. The IP address representing the FlashArray that the volumes for the source and refresh target databases reside on.
+
+.EXAMPLE
+New-FlashArrayDbSnapshot -Database tpch-no-compression -SqlInstance z-sql2016-devops-prd -Endpoint 10.225.112.10 -Creds $Creds
+
+Create a snapshot of FlashArray volume that stores the tpch-no-compression database on the z-sql2016-devops-prd instance
+
+.NOTES
+
+FlashArray Credentials - A global variable $Creds may be used as described in the release notes for this module. If neither is specified, the module will prompt for credentials.
+
+Known Restrictions
+------------------
+1. This function does not work for databases associated with failover cluster instances.
+2. This function cannot be used to seed secondary replicas in availability groups using databases in the primary replica.
+3. The function assumes that all database files and the transaction log reside on a single FlashArray volume.
+
+Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modules which are installed as part of this module.
+#>
+    param(
+        [parameter(mandatory = $true)] [string] $Database,
+        [parameter(mandatory = $true)] [string] $SqlInstance,
+        [parameter(mandatory = $true)] [string] $Endpoint
+    )
+
+    Get-Sdk1Module
+    Get-DbaToolsModule
+
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+
+    if ( ! $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) ) {
+        Write-Error "This function needs to be invoked within a PowerShell session with elevated admin rights"
+        Return
+    }
+
+    # Connect to FlashArray
+    if (!($Creds)) {
+        try {
+            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
+        }
+        catch {
+            $ExceptionMessage = $_.Exception.Message
+            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+            Return
+        }
+    }
+    else {
+        try {
+            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
+        }
+        catch {
+            $ExceptionMessage = $_.Exception.Message
+            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+            Return
+        }
+    }
+
+    Write-Colour -Text "FlashArray endpoint       : ", "CONNECTED" -Color Yellow, Green
+
+    try {
+        $DestDb = Get-DbaDatabase -SqlInstance $SqlInstance -Database $Database
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to destination database $SqlInstance.$Database with: $ExceptionMessage"
+        Return
+    }
+
+    Write-Colour -Text "Target SQL Server instance: ", $SqlInstance, " - ", "CONNECTED" -Color Yellow, Green, Green, Green
+    Write-Colour -Text "Target windows drive      : ", $DestDb.PrimaryFilePath.Split(':')[0] -Color Yellow, Green
+
+    try {
+        $TargetServer = (Connect-DbaInstance -SqlInstance $SqlInstance).ComputerNamePhysicalNetBIOS
+    }
+    catch {
+        Write-Error "Failed to determine target server name with: $ExceptionMessage"
+    }
+
+    Write-Colour -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
+
+    $GetDbDisk = { param ( $Db )
+        $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
+        return $DbDisk
+    }
+
+    try {
+        $TargetDisk = Invoke-Command -ComputerName $TargetServer -ScriptBlock $GetDbDisk -ArgumentList $DestDb
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to determine the windows disk snapshot target with: $ExceptionMessage"
+        Return
+    }
+
+    Write-Colour -Text "Target disk serial number : ", $TargetDisk.SerialNumber -Color Yellow, Green
+
+    try {
+        $TargetVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $TargetDisk.SerialNumber } | Select-Object name
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to determine snapshot FlashArray volume with: $ExceptionMessage"
+        Return
+    }
+
+    $SnapshotSuffix = $SqlInstance.Replace('\', '-') + '-' + $Database + '-' + $(Get-Date).Hour + $(Get-Date).Minute + $(Get-Date).Second
+    Write-Colour -Text "Snapshot target Pfa volume: ", $TargetVolume.name -Color Yellow, Green
+    Write-Colour -Text "Snapshot suffix           : ", $SnapshotSuffix -Color Yellow, Green
+
+    try {
+        New-PfaVolumeSnapshots -Array $FlashArray -Sources $TargetVolume.name -Suffix $SnapshotSuffix
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to create snapshot for target database FlashArray volume with: $ExceptionMessage"
+        Return
+    }
+}
+# Declare exports
+# END
