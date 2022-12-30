@@ -341,20 +341,31 @@ function Get-FlashArrayConfig() {
         [Parameter()][pscredential]$Credential = ( Get-PfaCredential )
     )
 
-    "==================================================================================" | Out-File -FilePath $OutFile -Append
-    "FlashArray Configuration Export for: $($ArrayName)" | Out-File -FilePath $OutFile -Append
-    "Date: $(Get-Date)" | Out-File -FilePath $OutFile -Append
-    "==================================================================================`n" | Out-File -FilePath $OutFile -Append
+    $connParam = @{
+        EndPoint = $EndPoint
+        Credential = $Credential
+    }
+
+    "==================================================================================",
+    "FlashArray Configuration Export for: $($ArrayName)",
+    "Date: $(Get-Date)",
+    "==================================================================================`n" | 
+    Out-File -FilePath $OutFile -Append
+
     $invokeCommand_pureconfig_list_object = "pureconfig list --object"
     $invokeCommand_pureconfig_list_system = "pureconfig list --system"
     Write-Host "Retrieving FlashArray OBJECT configuration export (host-pod-volume-hgroup-connection)..."
-    "FlashArray OBJECT configuration export (host-pod-volume-hgroup-connection)..." | Out-File -FilePath $OutFile -Append
-    " " | Out-File -FilePath $OutFile -Append
-    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $Credential -CommandText $invokeCommand_pureconfig_list_object | Out-File -FilePath $OutFile -Append
+    
+    "FlashArray OBJECT configuration export (host-pod-volume-hgroup-connection)...`n",
+    (Invoke-Pfa2CLICommand @connParam -CommandText $invokeCommand_pureconfig_list_object) |
+    Out-File -FilePath $OutFile -Append
+
     Write-Host "Retrieving FlashArray SYSTEM configuration export (array-network-alert-support)..."
-    "FlashArray SYSTEM configuration export (array-network-alert-support):" | Out-File -FilePath $OutFile -Append
-    " " | Out-File -FilePath $OutFile -Append
-    Invoke-Pfa2CLICommand -EndPoint $EndPoint -Credential $Credential -CommandText $invokeCommand_pureconfig_list_system | Out-File -FilePath $OutFile -Append
+
+    "FlashArray SYSTEM configuration export (array-network-alert-support):`n",
+    (Invoke-Pfa2CLICommand @connParam -CommandText $invokeCommand_pureconfig_list_system) |
+    Out-File -FilePath $OutFile -Append
+
     Write-Host "FlashArray configuration file located in $Outfile." -ForegroundColor Green
 }
 
@@ -402,12 +413,12 @@ function Get-FlashArrayConnectDetails() {
         $header = 'HostName', 'VolumeName', 'LUNID', 'IQNs', 'WWNs', 'Provisioned(TB)', 'HostWritten(GB)'
 
         # Get Connections and filter out VVOL protocol endpoints
-        $pureConns = (Get-Pfa2Connection -Array $flashArray | Where-Object { !($_.Volume.Name -eq 'pure-protocol-endpoint') })
+        $pureConns = Get-Pfa2Connection -Array $flashArray | Where-Object { $_.Volume.Name -ne 'pure-protocol-endpoint' }
 
         # For each Connection, build a row with the desired values from Connection, Host, and Volume objects. Add it to ConnDetails.
         ForEach ($pureConn in $PureConns) {
-            $pureHost = (Get-Pfa2Host -Array $flashArray | Where-Object { $_.Name -eq $PureConn.Host.Name })
-            $pureVol = (Get-Pfa2Volume -Array $flashArray | Where-Object { $_.Name -eq $PureConn.Volume.Name })
+            $pureHost = Get-Pfa2Host -Array $flashArray -Name $PureConn.Host.Name
+            $pureVol  = Get-Pfa2Volume -Array $flashArray -Name $PureConn.Volume.Name
 
             # Calculate and format Host Written Capacity, Volume Provisioned Capacity
             $hostWrittenCapacity = [Math]::Round(($pureVol.Provisioned * (1 - $PureVol.Space.ThinProvisioning)) / 1GB, 2)
@@ -761,35 +772,39 @@ function Get-FlashArrayQuickCapacityStats() {
         [pscredential]$Credential = ( Get-PfaCredential )
     )
 
-    # Connect to FlashArray(s)
-    $connections = @()
+    $count = 0
+    $capacity = 0
+    $volumes = 0
+    $beforereduction = 0
+    $provisioned = 0
+
     foreach ($Array in $Arrays) {
+        # Connect to FlashArray(s)
         try {
             $flashArray = Connect-Pfa2Array -Endpoint $Array -Credential $Credential -IgnoreCertificateError
-            $connections += $flashArray
         }
         catch {
             $exceptionMessage = $_.Exception.Message
             Write-Error "Failed to connect to FlashArray endpoint $Array with: $exceptionMessage"
             Return
         }
+
+        try {
+            $s = Get-Pfa2ArraySpace -Array $flashArray
+
+            $count ++;
+            $capacity += $s.Capacity
+            $volumes  += $s.Unique
+            $beforereduction +=  $s.Unique * $s.DataReduction 
+            $provisioned +=  ($s.TotalPhysical - $s.System) / (1 - $s.ThinProvisioning) * $s.DataReduction 
+        }
+        finally {
+            Disconnect-Pfa2Array -Array $flashArray
+        }
     }
 
-    try {
-        $spacemetrics = $connections | foreach { Get-Pfa2ArraySpace -Array $_ } | select -Property 'Capacity' -ExpandProperty 'Space'
-        $spacemetrics = @($spacemetrics | Select-Object *, @{N = 'expvolumes'; E = { $_.Unique * $_.DataReduction } }, @{N = 'provisioned'; E = { ($_.TotalPhysical - $_.System) / (1 - $_.ThinProvisioning) * $_.DataReduction } })
-
-        $totalcapacity = ($spacemetrics | Measure-Object Capacity -Sum).Sum
-        $totalvolumes = ($spacemetrics | Measure-Object Unique -Sum).Sum
-        $totalvolumes_beforereduction = ($spacemetrics | Measure-Object expvolumes -Sum).Sum
-        $totalprovisioned = ($spacemetrics | Measure-Object provisioned -Sum).Sum
-
-        Write-Host "On $($spacemetrics.Count) Pure FlashArrays, there is $([int]($totalcapacity/1TB)) TB of capacity; $([int]($totalvolumes/1TB)) TB written, reduced from $([int]($totalvolumes_beforereduction/1TB)) TB. Total provisioned: $([int]($totalprovisioned/1TB)) TB."
-        Write-Host "Data collected on $(Get-Date)"
-    }
-    finally {
-        Disconnect-Pfa2Array -Array $flashArray
-    }
+    Write-Host "On $($count) Pure FlashArrays, there is $([int]($capacity/1TB)) TB of capacity; $([int]($volumes/1TB)) TB written, reduced from $([int]($beforereduction/1TB)) TB. Total provisioned: $([int]($provisioned/1TB)) TB."
+    Write-Host "Data collected on $(Get-Date)"
 }
 
 function Get-FlashArrayRASession() {
@@ -811,43 +826,42 @@ function Get-FlashArrayRASession() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-    Get-Sdk1Module
+
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    catch {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $exceptionMessage"
+        Return
     }
 
-    While ($true) {
-        If ((Get-PfaRemoteAssistSession -Array $FlashArray).Status -eq 'disabled') {
-            Set-PfaRemoteAssistStatus -Array $FlashArray -Action connect
-        }
-        else {
-            Write-Warning "Remote Assist session is not active."
-            Start-Sleep 30
-        }
+    try {
+        Write-Host 'Testing remote assist connectivity'
+        do {
+            $test = Get-Pfa2SupportTest -Array $flashArray -TestType 'remote-assist'
+            If ($test.Success) {
+                Write-Host $test.ResultDetails
+            } else {
+                Write-Warning $test.ResultDetails
+                Start-Sleep 30
+            }
+        } until ($test.Success)
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 }
+
 function Get-FlashArraySpace() {
     <#
     .SYNOPSIS
@@ -940,97 +954,81 @@ function Get-FlashArrayStaleSnapshots() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
-    [CmdletBinding()]
+
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SnapAgeThreshold,
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(Mandatory = $True)]
+        [ValidateNotNullOrEmpty()][decimal] $SnapAgeThreshold,
         [switch]$Delete,
         [switch]$Eradicate,
-        [switch]$Confirm
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
+
     # Establish variables, Pure time format, and gather current time.
-    $1GB = 1024 * 1024 * 1024
     $CurrentTime = Get-Date
-    $DateTimeFormat = 'yyyy-MM-ddTHH:mm:ssZ'
 
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
     }
 
     # Establish and reset counter variables.
-    [int]$SpaceConsumedTotal = 0
-    [int]$SnapNumberTotal = 0
     $Timespan = $null
-    [int]$SpaceConsumed = 0
+    [decimal]$SpaceConsumed = 0
     [int]$SnapNumber = 0
+
     try {
-        $Snapshots = Get-PfaAllVolumeSnapshots -Array $FlashArray
+        $Snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray
 
-        Write-Output ""
-        Write-Output "========================================================================="
-        Write-Output "      $EndPoint                               "
-        Write-Output "========================================================================="
-    }
-    catch {
-        Write-Host "Error processing $($EndPoint)."
-    }
-    #Get all snapshots and compute the age of them. $DateTimeFormat variable taken from above; this is needed in order to parse Pure time format.
-    foreach ($Snapshot in $Snapshots) {
-        $SnapshotDateTime = $Snapshot.created
-        $SnapshotDateTime = [datetime]::ParseExact($SnapshotDateTime, $DateTimeFormat, $null)
-        $Timespan = New-TimeSpan -Start $SnapshotDateTime -End $CurrentTime
-        $SnapAge = $($Timespan.Days + $($Timespan.Hours / 24) + $($Timespan.Minutes / 1440))
-        $SnapAge = [math]::Round($SnapAge, 2)
+        Write-Host ''
+        Write-Host '========================================================================='
+        Write-Host "      $EndPoint                               "
+        Write-Host '========================================================================='
 
-        #Find snaps older than given threshold and output with formatted data.
-        if ($SnapAge -gt $SnapAgeThreshold) {
-            $SnapStats = Get-PfaSnapshotSpaceMetrics -Array $FlashArray -Name $Snapshot.name
-            $SnapSize = [math]::round($($SnapStats.total / $1GB), 2)
-            $SpaceConsumed = $SpaceConsumed + $SnapSize
-            $SnapNumber = $SnapNumber + 1
+        #Get all snapshots and compute the age of them. $DateTimeFormat variable taken from above; this is needed in order to parse Pure time format.
+        foreach ($Snapshot in $Snapshots) {
+            $Timespan = New-TimeSpan -Start $Snapshot.created -End $CurrentTime
+            $SnapAge = $Timespan.TotalDays
 
-            #Delete snapshots
-            if ($Delete -eq $true -and $Eradicate -eq $true) {
-                Remove-PfaVolumeOrSnapshot -Array $FlashArray -Name $Snapshot.name -Eradicate -Confirm $Confirm
-                Write-Output "Eradicating $($Snapshot.name) - $($SnapSize) GB."
-            }
-            elseif ($Delete -eq $true) {
-                Remove-PfaVolumeOrSnapshot -Array $FlashArray -Name $Snapshot.name -Confirm $Confirm
-                Write-Output "Deleting $($Snapshot.name) - $($SnapSize) GB."
-            }
-            else {
-                Write-Output $Snapshot.name
-                Write-Output "          $SnapSize GB"
-                Write-Output "          $SnapAge days"
+            #Find snaps older than given threshold and output with formatted data.
+            if ($SnapAge -gt $SnapAgeThreshold) {
+                $SnapSize = [math]::round([decimal]$Snapshot.Space.TotalPhysical / 1GB, 2)
+                $SpaceConsumed = $SpaceConsumed + $SnapSize
+                $SnapNumber++
+
+                #Delete snapshots
+                if ($Delete -and $Eradicate) {
+                    Remove-Pfa2VolumeSnapshot -Array $FlashArray -Name $Snapshot.name -Eradicate
+                    Write-Host "Eradicating $($Snapshot.name) - $($SnapSize) GB."
+                }
+                elseif ($Delete) {
+                    Remove-Pfa2VolumeSnapshot -Array $FlashArray -Name $Snapshot.name
+                    Write-Host "Deleting $($Snapshot.name) - $($SnapSize) GB."
+                }
+                else {
+                    Write-Host $Snapshot.name
+                    Write-Host "          $SnapSize GB"
+                    "          {0:N2} days" -f $SnapAge | Write-Host
+                }
             }
         }
-
     }
-    #Display final message for array results.
-    Write-Output "There are $($SnapNumber) snapshot(s) older than $($SnapAgeThreshold) days consuming a total of $($SpaceConsumed) GB on the array."
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
+    }
 
-    $SnapNumberTotal = $SnapNumberTotal + $SnapNumber
-    $SpaceConsumedTotal = $SpaceConsumedTotal + $SpaceConsumed
+    #Display final message for array results.
+    Write-Host "There are $($SnapNumber) snapshot(s) older than $($SnapAgeThreshold) days consuming a total of $($SpaceConsumed) GB on the array."
 }
-Write-Output "There are $($SnapNumberTotal) snapshot(s) older than $($SnapAgeThreshold) days consuming a total of $($SpaceConsumedTotal) GB."
+
 function Get-FlashArrayVolumeGrowth() {
     <#
     .SYNOPSIS
@@ -1076,87 +1074,98 @@ function Get-FlashArrayVolumeGrowth() {
     Param (
         [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string[]] $Arrays,
         [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][DateTime] $StartTime,
-        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $MinimumVolumeAgeInDays = '1',
-        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $GrowthPercentThreshold = '1',
-        [Parameter(Mandatory = $False)][string] $DoNotReportGrowthOfLessThan = '1',
-        [Parameter(Mandatory = $False)][string] $DoNotReportVolSmallerThan = '1GB',
-        [Parameter(Mandatory = $False)][switch] $csv,
-        [Parameter(Mandatory = $False)][switch] $html,
+        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][int] $MinimumVolumeAgeInDays = 1,
+        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][int] $GrowthPercentThreshold = 1,
+        [Parameter(Mandatory = $False)][int] $DoNotReportGrowthOfLessThan = 1,
+        [Parameter(Mandatory = $False)][long] $DoNotReportVolSmallerThan = 1GB,
+        [Parameter(Mandatory = $False)][switch] $Csv,
+        [Parameter(Mandatory = $False)][switch] $Html,
         [Parameter(ValueFromPipelineByPropertyName)]
         [pscredential]$Credential = ( Get-PfaCredential )
     )
 
-    # Connect to FlashArray(s)
-    $connections = @{}
-    $volThatBreachGrowthPercentThreshold = @()
-    foreach ($array in $Arrays) {
+    Write-Host ''
+    Write-Host 'Retrieving data from arrays and calculating.' -ForegroundColor Yellow
+    Write-Host 'This may take some time depending on number of arrays, volumes, etc. Please wait...' -ForegroundColor Yellow
+    Write-Host ''
+
+    $latestDate = (Get-Date).AddDays(-$MinimumVolumeAgeInDays)
+    function Get-VolumeStats {
+        param (
+            [string]$array
+        )
+
+        Write-Host "Calculating array $array..." -ForegroundColor Green
+        Write-Host ''
+
+        # Connect to FlashArray(s)
         try {
             $flashArray = Connect-Pfa2Array -Endpoint $array -Credential $Credential -IgnoreCertificateError
-            $connections.add($array, $flashArray)
         }
         catch {
             $exceptionMessage = $_.Exception.Message
             Write-Error "Failed to connect to FlashArray endpoint $array with: $exceptionMessage"
             Return
         }
+
+        try {
+            Get-Pfa2Volume -Array $flashArray -ErrorAction SilentlyContinue |
+                where { $_.Space.TotalProvisioned -GT $DoNotReportVolSmallerThan } | 
+                where { (Get-Date $_.created) -lt $latestDate } |
+                foreach {
+                    $volumeSpaceMetrics = Get-Pfa2VolumeSpace -Name $_.name -StartTime $StartTime -Array $flashArray
+                    $last = ($volumeSpaceMetrics | Select-Object -Last 1).volumes
+                    $first = ($volumeSpaceMetrics | Select-Object -First 1).volumes
+                    $_ |
+                        Add-Member NoteProperty -PassThru -Force -Name 'GrowthPercentage' -Value  $([math]::Round($last / (1KB + $first), 2)) | # 1KB+ appended to avoid devide by 0 errors
+                        Add-Member NoteProperty -PassThru -Force -Name 'GrowthInGB' -Value  $([math]::Round(($last - $first / 1GB), 2)) |
+                        Add-Member NoteProperty -PassThru -Force -Name 'ArrayName' -Value $array
+                } |
+                where { $_.GrowthPercentage -gt $GrowthPercentThreshold -and $_.GrowthInGB -gt $DoNotReportGrowthOfLessThan }
+        }
+        finally {
+            Disconnect-Pfa2Array -Array $flashArray
+        }
     }
 
-    try {
-        Write-Host ''
-        Write-Host 'Retrieving data from arrays and calculating.' -ForegroundColor Yellow
-        Write-Host 'This may take some time depending on number of arrays, volumes, etc. Please wait...' -ForegroundColor Yellow
-        Write-Host ''
+    $volThatBreachGrowthPercentThreshold = $Arrays | Get-VolumeStats
 
-        foreach ($array in $Arrays) {
-            Write-Host "Calculating array $array..." -ForegroundColor Green
-            Write-Host ''
-            $flashArray = $connections[$array]
-            $volDetails = (Get-Pfa2Volume -Array $flashArray -ErrorAction SilentlyContinue)
-            $volDetailsExcludingNewAndSmall = $volDetails | ? { $_.Space.TotalProvisioned -GT $DoNotReportVolSmallerThan } | Where-Object { (Get-Date $_.created) -lt (Get-Date).AddDays(-$MinimumVolumeAgeInDays) }
-            $volDetailsExcludingNewAndSmall = $volDetailsExcludingNewAndSmall |
-            % {
-                $volumeSpaceMetrics = Get-Pfa2VolumeSpace -Name $_.name -StartTime $StartTime -Array $flashArray
-                $_ | Add-Member NoteProperty -PassThru -Force -Name 'GrowthPercentage' -Value  $([math]::Round((($volumeSpaceMetrics | select -Last 1).volumes / (1KB + ($volumeSpaceMetrics | Select-Object -First 1).volumes)), 2)) | # 1KB+ appended to avoid devide by 0 errors
-                Add-Member NoteProperty -PassThru -Force -Name 'GrowthInGB' -Value  $([math]::Round(((($volumeSpaceMetrics | Select-Object -Last 1).volumes - ($volumeSpaceMetrics | Select-Object -First 1).volumes) / 1GB), 2)) | `
-                    Add-Member NoteProperty -PassThru -Force -Name 'ArrayName' -Value $array
-            }
-            $volThatBreachGrowthPercentThreshold += $volDetailsExcludingNewAndSmall | Where-Object { $_.GrowthPercentage -gt $GrowthPercentThreshold -and $_.GrowthInGB -gt $DoNotReportGrowthOfLessThan }
+    Write-Host ' '
+    Write-Host 'Query parameters specified as:'
+    Write-Host "1) Ignore volumes created in the last $MinimumVolumeAgeInDays days, 2) Volumes smaller than $($DoNotReportVolSmallerThan / 1GB) GB, and 3) Growth lower than $DoNotReportGrowthOfLessThan GB." -ForegroundColor Green
+    Write-Host ' '
 
-            if ($volThatBreachGrowthPercentThreshold) {
-                Write-Host "The following volumes have grown above the $GrowthPercentThreshold Percent of thier previous size starting from ${StartTime}:" -ForegroundColor Green
-            ($($volThatBreachGrowthPercentThreshold | Select-Object Name, ArrayName, GrowthInGB, GrowthPercentage) | Format-Table -AutoSize )
-                $htmlOutput = ($($volThatBreachGrowthPercentThreshold | Select-Object name, ArrayName, GrowthInGB, GrowthPercentage))
-                $csvOutput = ($($volThatBreachGrowthPercentThreshold | Select-Object name, ArrayName, GrowthInGB, GrowthPercentage))
-            }
-        }
 
-        Write-Host ' '
-        Write-Host 'Query parameters specified as:'
-        Write-Host "1) Ignore volumes created in the last $MinimumVolumeAgeInDays days, 2) Volumes smaller than $($DoNotReportVolSmallerThan / 1GB) GB, and 3) Growth lower than $DoNotReportGrowthOfLessThan GB." -ForegroundColor Green
-        Write-Host ' '
+    if ($volThatBreachGrowthPercentThreshold) {
+        Write-Host "The following volumes have grown above the $GrowthPercentThreshold Percent of thier previous size starting from ${StartTime}:" -ForegroundColor Green
 
-        if ($html.IsPresent) {
+        $result = $volThatBreachGrowthPercentThreshold | Select-Object Name, ArrayName, GrowthInGB, GrowthPercentage
+
+        # Screen output
+        $result | Format-Table -AutoSize
+
+        if ($Html) {
             Write-Host 'Building HTML report as requested. Please wait...' -ForegroundColor Yellow
+
             $htmlParams = @{
                 Title       = 'Volume Capacity Report for FlashArrays'
                 Body        = Get-Date
                 PreContent  = "<p>Volume Capacity Report for FlashArrays $Arrays :</p>"
                 PostContent = "<p>Query parameters specified as: 1) Ignore volumes created in the last $MinimumVolumeAgeInDays days, 2) Volumes smaller than $($DoNotReportVolSmallerThan / 1GB) GB, and 3) Growth lower than $DoNotReportGrowthOfLessThan GB.</p>"
             }
-            $htmlOutput | ConvertTo-Html @htmlParams | Out-File -FilePath .\FlashArrayVolumeGrowthReport.html | Out-Null
+
+            $result | ConvertTo-Html @htmlParams | Out-File -FilePath .\FlashArrayVolumeGrowthReport.html | Out-Null
         }
-        if ($csv.IsPresent) {
+
+        if ($Csv) {
             Write-Host 'Building CSV report as requested. Please wait...' -ForegroundColor Yellow
-            $csvOutput | Export-Csv -NoTypeInformation -Path .\FlashArrayVolumeGrowthReport.csv
-        }
-        else {
-            Write-Host ' '
-            Write-Host 'No volumes on the array(s) match the requested criteria.'
-            Write-Host ' '
+            $result | Export-Csv -NoTypeInformation -Path .\FlashArrayVolumeGrowthReport.csv
         }
     }
-    finally {
-        Disconnect-Pfa2Array -Array $flashArray
+    else {
+        Write-Host ' '
+        Write-Host 'No volumes on the array(s) match the requested criteria.'
+        Write-Host ' '
     }
 }
 
@@ -1191,12 +1200,15 @@ function New-FlashArrayCapacityReport() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
     Param (
         [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
         [Parameter(Mandatory = $False)][string] $OutFile = "$env:Temp",
         [Parameter(Mandatory = $False)][string] $HTMLFileName = "Array_Capacity_Report.html",
-        [Parameter(Mandatory = $False)][string] $VolumeFilter = "*"
+        [Parameter(Mandatory = $False)][string] $VolumeFilter = "*",
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
     # define variables
@@ -1209,105 +1221,85 @@ function New-FlashArrayCapacityReport() {
         CreatedBy = "$env:USERNAME"
     }
 
-    Get-Sdk1Module
-
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
     }
 
-    # populate variables
-    $FlashArraySpaceMetrics = Get-PfaArraySpaceMetrics -Array $FlashArray
-    $FlashArrayConfig = Get-PfaArrayAttributes -Array $FlashArray
-    $FlashArraySnapshots = Get-PfaAllVolumeSnapshots -Array $FlashArray
+    try {
+        # populate variables
+        $FlashArrayConfig = Get-Pfa2Array -Array $FlashArray
 
-    $sysCapacity = Convert-Size -ConvertFrom Bytes -ConvertTo TB $FlashArraySpaceMetrics.capacity -Precision 2
-    $sysSnapshotSpace = Convert-Size -ConvertFrom Bytes -ConvertTo MB $FlashArraySpaceMetrics.snapshots -Precision 4
-    $sysVolumeSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArraySpaceMetrics.volumes -Precision 2
-    $sysDRR = [system.Math]::Round($FlashArraySpaceMetrics.data_reduction, 1)
-    $sysSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArraySpaceMetrics.total -Precision 2
-    $sysSharedSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArraySpaceMetrics.shared_space -Precision 0
-    $sysTP = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArraySpaceMetrics.thin_provisioning -Precision 2
-    if ([system.Math]::Round($FlashArraySpaceMetrics.total_reduction, 1) -gt 100) {
-        $sysTotalDRR = ">100:1"
-    }
-    else {
-        $sysTotalDRR = ([system.Math]::Round($FlashArraySpaceMetrics.total_reduction, 1)).toString() + ":1"
-    }
+        $sysCapacity = Convert-Size -ConvertFrom Bytes -ConvertTo TB $FlashArrayConfig.capacity -Precision 2
+        $sysSnapshotSpace = Convert-Size -ConvertFrom Bytes -ConvertTo MB $FlashArrayConfig.Space.snapshots -Precision 4
+        $sysVolumeSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.Unique -Precision 2
+        $sysDRR = [system.Math]::Round($FlashArrayConfig.Space.DataReduction, 1)
+        $sysSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.TotalPhysical -Precision 2
+        $sysSharedSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.Shared -Precision 0
 
-    # zero out varables
-    $volumeInfo = $null
-    $provisioned = 0
-
-    $volumes = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.name -like $VolumeFilter }
-    $volumeInfo += "<th>Volume Name</th><th>Volume Size (GB)</th><th>Connection</th><th><center>Protected</center></th><th>DR</th><th>SS</th><th>TP</th><th>WS (GB)</th>"
-
-    ForEach ($volume in $volumes) {
-        $printVol = $volume.name
-        $volSize = ($volume.size) / 1GB
-        $provisioned = (Convert-Size -ConvertFrom GB -ConvertTo TB $volSize -Precision 4) + $provisioned
-        $dr = Get-PfaVolumeSpaceMetrics -Array $FlashArray -VolumeName $volume.name
-        $datardx = "{0:N2}" -f $dr.data_reduction
-        $dataTP = "{0:N3}" -f $dr.thin_provisioning
-        $WrittenSpace = "{0:N2}" -f (((1 - $dr.thin_provisioning) * $dr.total) / 1024 / 1024 / 1024)
-        if ($dr.shared_space) {
-            $dataSS = "{0:N2}" -f $dr.shared_space
+        if ([system.Math]::Round($FlashArrayConfig.Space.TotalReduction, 1) -gt 100) {
+            $sysTotalDRR = ">100:1"
         }
         else {
-            $dataSS = "None"
+            $sysTotalDRR = ([system.Math]::Round($FlashArrayConfig.Space.TotalReduction, 1)).toString() + ":1"
         }
 
-        # Does the volume have any snapshots?
-        if (!(Get-PfaVolumeSnapshots -Array $FlashArray -VolumeName $volume.name)) {
-            $protected = "No"
-        }
-        else {
-            $protected = "Yes"
-        }
+        # zero out varables
+        $volumeInfo = $null
+        $provisioned = 0
 
-        if (!(Get-PfaVolumeHostConnections -Array $FlashArray -VolumeName $volume.name).host) {
-            if (!(Get-PfaVolumeHostGroupConnections -Array $FlashArray -VolumeName $volume.name).hgroup) {
+        $volumes = Get-Pfa2Volume -Array $FlashArray -Name $VolumeFilter -Filter "not(subtype='protocol_endpoint')"
+        $volumeInfo += "<th>Volume Name</th><th>Volume Size (GB)</th><th>Connection</th><th><center>Protected</center></th><th>DR</th><th>SS</th><th>TP</th><th>WS (GB)</th>"
+
+        ForEach ($volume in $volumes) {
+            $printVol = $volume.name
+            $volSize = ($volume.Provisioned) / 1GB
+            $provisioned = (Convert-Size -ConvertFrom GB -ConvertTo TB $volSize -Precision 4) + $provisioned
+            $datardx = "{0:N2}" -f $volume.Space.DataReduction
+            $dataTP = "{0:N3}" -f $volume.Space.ThinProvisioning
+            $WrittenSpace = "{0:N2}" -f (((1 - $volume.Space.ThinProvisioning) * $volume.Space.TotalPhysical) / 1GB)
+            if ($volume.Space.shared_space) {
+                $dataSS = "{0:N2}" -f $volume.Space.shared_space
+            }
+            else {
+                $dataSS = "None"
+            }
+
+            # Does the volume have any snapshots?
+            if (!(Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $volume.name)) {
+                $protected = "No"
+            }
+            else {
+                $protected = "Yes"
+            }
+
+            $hostConnections = (Get-Pfa2Connection -Array $connection -VolumeNames $volume.name)
+            if (!$hostConnections) {
                 $hostconnname = "Not Connected"
             }
             else {
-                if (((Get-PfaVolumeHostGroupConnections -Array $FlashArray -VolumeName $volume.name).hgroup).Count -gt 1) {
-                    $hostconnname = (Get-PfaVolumeHostGroupConnections -Array $FlashArray -VolumeName $volume.name).hgroup[0]
-                }
-                else {
-                    $hostconnname = (Get-PfaVolumeHostGroupConnections -Array $FlashArray -VolumeName $volume.name).hgroup
-                }
+                $hostconnname = $hostConnections.Host.Name
             }
-        }
-        else {
-            $hostconnname = (Get-PfaVolumeHostConnections -Array $FlashArray -VolumeName $volume.name).host
-        }
-        $volumeInfo += "<tr><td>$("{0:N0}" -f $printVol)</td> <td>$("{0:N0}" -f $volSize)</td><td>$($hostconnname)</td><td><center>$protected</center></td><td>$($datardx)</td><td>$($dataSS)</td><td>$($dataTP)</td><td>$($WrittenSpace)</td></tr>"
-    }
 
-    $snapshotInfo = $null
-    $snapshots = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.name -like $VolumeFilter }
-    $snapshotInfo += "<th>Snapshot Name</th><th>Snapshot Size (GB)</th>"
-    ForEach ($snapshot in $snapshots) {
-        $printSnapshot = $snapshot.name
-        $snapshotSize = ($snapshot.size) / 1GB
-        $snapshotInfo += "<tr><td>$("{0:N0}" -f $printSnapshot)</td> <td>$("{0:N0}" -f $snapshotSize)</td></tr>"
+            $volumeInfo += "<tr><td>$("{0:N0}" -f $printVol)</td> <td>$("{0:N0}" -f $volSize)</td><td>$($hostconnname -join '<br>')</td><td><center>$protected</center></td><td>$($datardx)</td><td>$($dataSS)</td><td>$($dataTP)</td><td>$($WrittenSpace)</td></tr>"
+        }
+
+        $snapshotInfo = $null
+        $snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $VolumeFilter
+        $snapshotInfo += "<th>Snapshot Name</th><th>Snapshot Size (GB)</th>"
+        ForEach ($snapshot in $snapshots) {
+            $printSnapshot = $snapshot.name
+            $snapshotSize = ($snapshot.Space.TotalProvisioned) / 1GB
+            $snapshotInfo += "<tr><td>$("{0:N0}" -f $printSnapshot)</td> <td>$("{0:N0}" -f $snapshotSize)</td></tr>"
+        }
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 
     # Create HTML/CSS report format
@@ -2082,7 +2074,7 @@ AElFTkSuQmCC">
 <table class="list">
 <tr>
 <td>FlashArray Name</td>
-<td>$($FlashArrayConfig.array_name)</td>
+<td>$($FlashArrayConfig.name)</td>
 </tr>
 <tr>
 <td>Purity Version</td>
@@ -2130,10 +2122,10 @@ AElFTkSuQmCC">
 </tr>
 </table>
 <h3>Volume Information</h3>
-<p>Volumes(s), Sizes (GB) and Data Reduction columes include DR (Data Reduction), SS (Shared Space)<br>and TP (Thin Provisioning) and WS (Written Space) for $($FlashArrayConfig.array_name) listed below.</p>
+<p>Volumes(s), Sizes (GB) and Data Reduction columes include DR (Data Reduction), SS (Shared Space)<br>and TP (Thin Provisioning) and WS (Written Space) for $($FlashArrayConfig.name) listed below.</p>
 <table class="list">$volumeInfo</table>
 <h3>FlashRecover SnapShot Information</h3>
-<p>Snapshot(s) and Sizes (GB) for $($FlashArrayConfig.array_name) listed below.</p>
+<p>Snapshot(s) and Sizes (GB) for $($FlashArrayConfig.name) listed below.</p>
 <table class="list">$snapshotInfo</table>
 <br></br>
 "@
@@ -2156,6 +2148,7 @@ $ReportDateTime
     Write-Host " "
     Write-Host "The report file is located in the $OutFile folder." -ForegroundColor Green
 }
+
 function New-FlashArrayPGroupVolumes() {
     <#
     .SYNOPSIS
@@ -2181,180 +2174,42 @@ function New-FlashArrayPGroupVolumes() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
     Param (
+        [Parameter(Position = 0, Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()][string] $EndPoint,
         [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $PGroupPrefix,
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $VolumeSizeGB,
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $NumberOfVolumes
+        [Parameter(Mandatory = $True)][ValidateRange(1, [int]::MaxValue)][int] $VolumeSizeGB,
+        [Parameter(Mandatory = $True)][ValidateRange(1, [int]::MaxValue)][int] $NumberOfVolumes,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
-    Get-Sdk1Module
+
     # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-    $Volumes = @()
-    for ($i = 1; $i -le $NumberOfVolumes; $i++) {
-        New-PfaVolume -Array $FlashArray -VolumeName "$PGroupPrefix-Vol$i" -Unit G -Size $VolumeSizeGB
-        $Volumes += "$PGroupPrefix-Vol$i"
-    }
-    $Volumes -join ","
-    New-PfaProtectionGroup -Array $FlashArray -Name "$PGGroupPrefix-PGroup" -Volumes $Volumes
-}
-function New-HypervClusterVolumeReport() {
-    <#
-    .SYNOPSIS
-    Creates a Excel report on volumes connected to a Hyper-V cluster.
-    .DESCRIPTION
-    This creates separate CSV files for VM, Windows Hosts, and FlashArray information that is part of a HyperV cluster. It then takes that output and places it into a an Excel workbook that contains sheets for each CSV file.
-    .PARAMETER VmCsvFileName
-    Optional. Defaults to VMs.csv.
-    .PARAMETER WinCsvFileName
-    Optional. defaults to WindowsHosts.csv.
-    .PARAMETER PfaCsvFileName
-    Optional. defaults to FlashArrays.csv.
-    .PARAMETER ExcelFile
-    Optional. defaults to HypervClusterReport.xlsx.
-    .INPUTS
-    Endpoint is mandatory. VM, Win, and PFA csv file names are optional.
-    .OUTPUTS
-    Outputs individual CSV files and creates an Excel workbook that is built using the required PowerShell module ImportExcel, created by Douglas Finke.
-    .EXAMPLE
-    New-HypervClusterVolumeReport -EndPoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile
-
-    This will create three separate CSV files with HyperV cluster information and incorporate them into a single Excel workbook.
-    .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
-    #>
-    [CmdletBinding()]
-    Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
-        [Parameter(Mandatory=$False)][string]$VmCsvFileName = "VMs.csv",
-        [Parameter(Mandatory=$False)][string]$WinCsvFileName = "WindowsHosts.csv",
-        [Parameter(Mandatory=$False)][string]$PfaCsvFileName = "FlashArrays.csv",
-        [Parameter(Mandatory=$False)][string]$ExcelFile = "HypervClusterReport.xlxs"
-    )
     try {
-        Get-ElevatedStatus
-
-        Get-HypervStatus
-
-        ## Check for modules & features
-        Write-Host "Checking, installing, and importing prerequisite modules."
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $modulesArray = @(
-            "PureStoragePowerShellSDK",
-            "ImportExcel"
-        )
-        ForEach ($mod in $modulesArray) {
-            If (Get-Module -ListAvailable $mod) {
-                Continue
-            }
-            Else {
-                Install-Module $mod -Force -ErrorAction 'SilentlyContinue'
-                Import-Module $mod -ErrorAction 'SilentlyContinue'
-            }
-        }
-
-        Write-Host "Checking and installing prerequisite Windows Features."
-        $osVer = (Get-ComputerInfo).WindowsProductName
-        $featuresArray = @(
-            "hyper-v-powershell",
-            "rsat-clustering-powershell"
-        )
-        ForEach ($fea in $featuresArray) {
-            If (Get-WindowsFeature $fea | Select-Object -ExpandProperty installed) {
-                Continue
-            }
-            Else {
-                If ($osVer -le "2008") {
-                    Add-WindowsFeature -Name $fea -Force -ErrorAction 'SilentlyContinue'
-                }
-                Else {
-                    Install-WindowsFeature -Name $fea -Force -ErrorAction 'SilentlyContinue'
-                }
-            }
-        }
-
-        # Connect to FlashArray
-        if (!($Creds)) {
-            try {
-                $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-            }
-            catch {
-                $ExceptionMessage = $_.Exception.Message
-                Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-                Return
-            }
-        }
-        else {
-            try {
-                $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-            }
-            catch {
-                $ExceptionMessage = $_.Exception.Message
-                Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-                Return
-            }
-        }
-
-        ## Get a list of VMs - VM Sheet
-        $vmList = Get-VM -ComputerName (Get-ClusterNode)
-        $vmList | ForEach-Object { $vmState = $_.state; $vmName = $_.name; Write-Output $_; } | ForEach-Object { Get-VHD -ComputerName $_.ComputerName -VMId $_.VMId
-        } | Select-Object -Property path, @{n = 'VMName'; e = { $vmName } }, @{n = 'VMState'; e = { $vmState } }, computername, vhdtype, @{Label = 'Size(GB)'; expression = { [Math]::Round($_.size / 1gb, 2) -as [int] } }, @{label = 'SizeOnDisk(GB)'; expression = { [Math]::Round($_.filesize / 1gb, 2) -as [int] } } | Export-Csv $VmCsvFileName
-        Import-Csv $VmCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'VMs'
-
-        ## Get windows physical disks - Windows Host Sheet
-        Get-ClusterNode | ForEach-Object { Get-WmiObject Win32_Volume -Filter "DriveType='3'" -ComputerName $_ | ForEach-Object {
-                [pscustomobject][ordered]@{
-                    Server        = $_.__Server
-                    Label         = $_.Label
-                    Name          = $_.Name
-                    TotalSize_GB  = ([Math]::Round($_.Capacity / 1GB, 2))
-                    FreeSpace_GB  = ([Math]::Round($_.FreeSpace / 1GB, 2))
-                    SizeOnDisk_GB = ([Math]::Round(($_.Capacity - $_.FreeSpace) / 1GB, 2))
-                }
-            } } | Export-Csv $WinCsvFileName -NoTypeInformation
-        Import-Csv $WinCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'Windows Hosts'
-        ## Get Pure FlashArray volumes and space - FlashArray Sheet
-        Function GetSerial {
-            [Cmdletbinding()]
-            Param(   [Parameter(ValueFromPipeline)]
-                $findserial)
-            $GetVol = Get-Volume -FilePath $findserial | Select-Object -ExpandProperty path
-            $GetDiskNum = Get-Partition | Where-Object -Property accesspaths -CContains $getvol | Select-Object disknumber
-            Get-Disk -Number $getdisknum.disknumber | Select-Object serialnumber
-        }
-        $pathQ = $VmList | ForEach-Object { Get-VHD -ComputerName $_.ComputerName -VMId $_.VMId } | Select-Object -ExpandProperty path
-        $serials = GetSerial { $pathQ } -ErrorAction SilentlyContinue
-
-        ## FlashArray volumes
-        $pureVols = Get-PfaVolumes -Array $FlashArray | Where-Object { $serials.serialnumber -contains $_.serial } | ForEach-Object { Get-PfaVolumeSpaceMetrics -Array $FlashArray -VolumeName $_.name } | Select-Object name, size, total, data_reduction
-
-        $pureVols | Select-Object Name, @{Name = "Size(GB)"; Expression = { [math]::round($_.size / 1gb, 2) } }, @{Name = "SizeOnDisk(GB)"; Expression = { [math]::round($_.total / 1gb, 2) } }, @{Name = "DataReduction"; Expression = { [math]::round($_.data_reduction, 2) } } | Export-Csv $PfaCsvFileName -NoTypeInformation
-        Import-Csv $PfaCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'FlashArrays'
-
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
     }
     catch {
-        Write-Host "There was a problem running this cmdlet. Please try again or submit an Issue in the GitHub Repository."
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
+    }
+
+    try {
+        $volumes = ( 1..$NumberOfVolumes ) |
+        foreach { "$PGroupPrefix-Vol$_" } |
+        New-Pfa2Volume -Array $FlashArray -Provisioned ($VolumeSizeGB * 1GB)
+
+        $group = New-Pfa2ProtectionGroup -Array $FlashArray -Name "$PGroupPrefix-PGroup"
+
+        New-Pfa2ProtectionGroupVolume -Array $FlashArray -MemberNames $volumes.name -GroupNames $group.Name
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 }
+
 function Remove-FlashArrayPendingDeletes() {
     <#
     .SYNOPSIS
@@ -2374,7 +2229,7 @@ function Remove-FlashArrayPendingDeletes() {
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     Param (
         [Parameter(Mandatory = $True, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
@@ -2393,67 +2248,66 @@ function Remove-FlashArrayPendingDeletes() {
         Return
     }
 
-    $pendingvolumelist = Get-Pfa2Volume -Array $flashArray -Destroyed $true
-    $pendingsnaplist = Get-Pfa2VolumeSnapshot -Array $flashArray -Destroyed $true
+    try {
+        $pendingvolumelist = Get-Pfa2Volume -Array $flashArray -Destroyed $true
+        $pendingsnaplist = Get-Pfa2VolumeSnapshot -Array $flashArray -Destroyed $true
 
-    Write-Host "Listing PENDING volumes and snapshots that exist on the array."
-    Write-Host "======================================================================================================================`n"
+        Write-Host 'Listing PENDING volumes and snapshots that exist on the array.'
+        Write-Host "======================================================================================================================`n"
 
-    if (!$pendingvolumelist) {
-        Write-Host "No volumes are pending delete."
-    }
-    else {
-        Write-Host "Volumes in PENDING state"
-        foreach ($volume in $pendingvolumelist) {
-            Write-Host " -" $volume.name
+        if (-not $pendingvolumelist) {
+            Write-Host 'No volumes are pending delete.'
         }
-    }
+        else {
+            Write-Host 'Volumes in PENDING state'
+            foreach ($volume in $pendingvolumelist) {
+                Write-Host ' -' $volume.name
+            }
+        }
 
-    if (!$pendingsnaplist) {
-        Write-Host "No snapshots are pending delete."
-    }
-    else {
-        Write-Host "Snapshots in PENDING state"
+        if (-not $pendingsnaplist) {
+            Write-Host 'No snapshots are pending delete.'
+        }
+        else {
+            Write-Host 'Snapshots in PENDING state'
+            foreach ($volumesnap in $pendingsnaplist) {
+                Write-Host ' -' $volumesnap.name
+            }
+        }
+
+        if (-not $pendingvolumelist -and -not $pendingsnaplist) {
+            return
+        }
+
+        if (-not $PSCmdlet.ShouldProcess(
+                'Eradicate pending volumes and snapshots.',
+                'Do you wish to perform this unrecoverable operation?',
+                'Eradicate pending volumes and snapshots.')) {
+            return
+        }
+
+        Write-Host 'Eradicating PENDING volumes and snapshots.'
+        Write-Host "======================================================================================================================`n"
+
         foreach ($volumesnap in $pendingsnaplist) {
-            Write-Host " -" $volumesnap.name
+            Write-Host ' -' $volumesnap.name ' eradicated'
+            Remove-Pfa2VolumeSnapshot -Array $flashArray -Name $volumesnap.name -Eradicate
         }
+
+        foreach ($volume in $pendingvolumelist) {
+            Write-Host ' -' $volume.name ' eradicated.'
+            Remove-Pfa2Volume -Array $flashArray -Name $volume.name -Eradicate
+        }
+
+        Write-Host 'Volume and Snapshot pending deletes have been eradicated.'
     }
-
-    if (!$pendingvolumelist -and !$pendingsnaplist) {
-        return
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
-
-    $confirmstring = "proceed"
-    Write-Host "Please confirm that you wish to perform an unrecoverable operation."
-    Write-Host "======================================================================================================================`n"
-    Write-Host "Please type the word $confirmstring to eradicate the pending deleted volumes and snapshots."
-    Write-Host "The action will initiate immediately upon inputting $confirmstring. This operation CANNOT be undone." -fore yellow
-
-    $user_response = Read-Host "`t"
-
-    if (($user_response.ToLower() -ne $confirmstring.ToLower())) {
-        Write-Host "Your input was [$user_response]. It was not the word $confirmstring. Exiting."
-        return
-    }
-
-    Write-Host "Eradicating PENDING volumes and snapshots."
-    Write-Host "======================================================================================================================`n"
-
-    foreach ($volumesnap in $pendingsnaplist) {
-        Write-Host " -" $volumesnap.name " eradicated"
-        Remove-Pfa2VolumeSnapshot -Array $flashArray -Name $volumesnap.name -Eradicate -Confirm:$false
-    }
-
-    foreach ($volume in $pendingvolumelist) {
-        Write-Host " -" $volume.name " eradicated."
-        Remove-Pfa2Volume -Array $flashArray -Name $volume.name -Eradicate -Confirm:$false
-    }
-
-    Write-Host "Volume and Snapshot pending deletes have been eradicated."
 }
 
 function Restore-PfaPGroupVolumeSnapshots() {
-	<#
+    <#
     .SYNOPSIS
     Recover all of the volumes from a protection group (PGroup) snapshot.
     .DESCRIPTION
@@ -2478,30 +2332,48 @@ function Restore-PfaPGroupVolumeSnapshots() {
     .NOTES
     This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
     #>
+
     [CmdletBinding()]
-	Param (
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $Array,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $ProtectionGroup,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SnapshotName,
-		[Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $PGroupPrefix,
-		[Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $Hostname
+    Param (
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $ProtectionGroup,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SnapshotName,
+        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $Prefix,
+        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string] $Hostname,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
+    )
 
-	)
+    # Connect to FlashArray
+    try {
+        $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
+    }
+    catch {
+        $ExceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+        Return
+    }
 
-    $PGroupVolumes = Get-PfaProtectionGroup -Array $Array -Name $ProtectionGroup -Session $Session
-    $PGroupSnapshotsSet = $SnapshotName
-
-    ForEach ($PGroupVolume in $PGroupVolumes)
-    {
-        For($i=0;$i -lt $PGroupVolume.volumes.Count;$i++)
-        {
-            $NewPGSnapshotVol = ($PGroupVolume.volumes[$i]).Replace($PGroupVolume.source+":",$Prefix+"-")
-            $Source = ($PGroupSnapshotsSet+"."+$PGroupVolumes.volumes[$i]).Replace($PGroupVolume.source+":","")
-            New-PfaVolume -Array $Array -VolumeName $NewPGSnapshotVol -Source $Source
-            New-PfaHostVolumeConnection -Array $array -HostName $Hostname -VolumeName $NewPGSnapshotVol
+    try {
+        $groups = Get-Pfa2ProtectionGroup -Array $flashArray -Name $ProtectionGroup
+        foreach ($group in $groups) {
+            $volumes = Get-Pfa2ProtectionGroupVolume -Array $connection -GroupNames $group.Name | select -ExpandProperty 'Member'
+            foreach ($volume in $volumes) {
+                $name = $volume.Name.Replace($group.Source.Name + '::', '')
+                $volumeName = "$Prefix-$name"
+                $source = "$SnapshotName.$name"
+                New-Pfa2Volume -Array $flashArray -Name $volumeName -SourceName $source
+                if ($Hostname) {
+                    New-Pfa2Connection -Array $flashArray -HostNames $Hostname -VolumeNames $volumeName
+                }
+            }
         }
     }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
+    }
 }
+
 function Sync-FlashArrayHosts() {
     <#
     .SYNOPSIS
@@ -2525,43 +2397,84 @@ function Sync-FlashArrayHosts() {
     .NOTES
     This cmdlet cannot utilize the global $Creds variable as it requires two logins to two separate arrays.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Position=0,Mandatory=$True)][ValidateNotNullOrEmpty()][string] $SourceArray,
-        [Parameter(Position=1,Mandatory=$True)][ValidateNotNullOrEmpty()][string]$TargetArray,
-        [Parameter(Mandatory = $True)][ValidateSet("iSCSI", "FC")][string]$Protocol
+        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $SourceArray,
+        [Parameter(Position = 1, Mandatory = $True)][ValidateNotNullOrEmpty()][string]$TargetArray,
+        [Parameter(Mandatory = $True)][ValidateSet("iSCSI", "FC")][string]$Protocol,
+        [Parameter(Mandatory = $False)][ValidateNotNullOrEmpty()][string]$hostName = '*',
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
-    $FlashArray1 = New-PfaArray -EndPoint $SourceArray -Credentials (Get-Credential) -IgnoreCertificateError
-    $FlashArray2 = New-PfaArray -EndPoint $TargetArray -Credentials (Get-Credential) -IgnoreCertificateError
+    # Connect to source FlashArray
+    try {
+        $FlashArray1 = Connect-Pfa2Array -Endpoint $SourceArray -Credential $Credential -IgnoreCertificateError
+    }
+    catch {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $SourceArray with: $exceptionMessage"
+        Return
+    }
 
-    Get-PfaHosts -Array $FlashArray1 | New-PfaHost -Array $FlashArray2
-    Get-PfaHostGroups -Array $FlashArray1 | New-PfaHostGroup -Array $FlashArray2
+    try {
+        # Connect to target FlashArray
+        try {
+            $FlashArray2 = Connect-Pfa2Array -Endpoint $TargetArray -Credential $Credential -IgnoreCertificateError
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to connect to FlashArray endpoint $TargetArray with: $exceptionMessage"
+            Return
+        }
 
-    $fa1Hosts = Get-PfaHosts -Array $FlashArray1
+        try {
+            Get-Pfa2HostGroup -Array $FlashArray1 -Filter "not(contains(name,':'))" | New-Pfa2HostGroup -Array $FlashArray2
 
-    switch ($Procotol) {
-        'iSCSI' {
-            foreach ($fa1Host in $fa1Hosts) {
-                Add-PfaHostIqns -Array $FlashArray2 -AddIqnList $fa1Host.iqn -Name $fa1Host.name
+            $fa1Hosts = Get-Pfa2Host -Array $FlashArray1 -Filter "not(contains(name,':'))" -Name $hostName
+            $fa1Hosts | New-Pfa2Host -Array $FlashArray2
+
+            switch ($Protocol) {
+                'iSCSI' {
+                    foreach ($fa1Host in $fa1Hosts) {
+                        Update-Pfa2host -Array $FlashArray2 -AddIqns $fa1Host.iqns -Name $fa1Host.name |
+                        Update-Pfa2host -Array $FlashArray2 -HostGroupName $fa1Host.HostGroup.Name
+
+                    }
+                }
+                'FC' {
+                    foreach ($fa1Host in $fa1Hosts) {
+                        Update-Pfa2host -Array $FlashArray2 -AddWwns $fa1Host.wwns -Name $fa1Host.name |
+                        Update-Pfa2host -Array $FlashArray2 -HostGroupName $fa1Host.HostGroup.Name
+                    }
+                }
             }
         }
-        'FC' {
-            foreach ($fa1Host in $fa1Hosts) {
-                Add-PfaHostWwns -Array $FlashArray2 -AddWwnList $fa1Host.wwn -Name $fa1Host.name
-            }
+        finally {
+            Disconnect-Pfa2Array -Array $FlashArray2
         }
     }
+    finally {
+        Disconnect-Pfa2Array -Array $FlashArray1
+    }
 }
+
 # Declare exports
 Export-ModuleMember -Function Get-AllHostVolumeInfo
 Export-ModuleMember -Function Get-FlashArrayDisconnectedVolumes
 Export-ModuleMember -Function Get-FlashArraySpace
+Export-ModuleMember -Function Get-FlashArrayStaleSnapshots
 Export-ModuleMember -Function Get-FlashArrayPgroupsConfig
 Export-ModuleMember -Function Get-FlashArrayConfig
 Export-ModuleMember -Function Get-FlashArrayHierarchy
 Export-ModuleMember -Function Get-FlashArrayQuickCapacityStats
+Export-ModuleMember -Function Get-FlashArrayRASession
 Export-ModuleMember -Function Get-FlashArrayVolumeGrowth
 Export-ModuleMember -Function Get-FlashArrayConnectDetails
 Export-ModuleMember -Function Remove-FlashArrayPendingDeletes
+Export-ModuleMember -Function Restore-PfaPGroupVolumeSnapshots
+Export-ModuleMember -Function Sync-FlashArrayHosts
+Export-ModuleMember -Function New-FlashArrayPGroupVolumes
+Export-ModuleMember -Function New-FlashArrayCapacityReport
 # END

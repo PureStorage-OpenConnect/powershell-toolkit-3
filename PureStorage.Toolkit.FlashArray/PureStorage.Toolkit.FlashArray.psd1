@@ -89,17 +89,23 @@ NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-		'Get-AllHostVolumeInfo',
-		'Get-FlashArrayDisconnectedVolumes',
-		'Get-FlashArraySpace',
-		'Get-FlashArrayPgroupsConfig',
-		'Get-FlashArrayConfig',
-		'Get-FlashArrayHierarchy',
-		'Get-FlashArrayQuickCapacityStats',
-		'Get-FlashArrayVolumeGrowth',
-		'Get-FlashArrayConnectDetails',
-		'Remove-FlashArrayPendingDeletes'
-		)
+    'Get-AllHostVolumeInfo',
+    'Get-FlashArrayDisconnectedVolumes',
+    'Get-FlashArraySpace',
+    'Get-FlashArrayStaleSnapshots',
+    'Get-FlashArrayPgroupsConfig',
+    'Get-FlashArrayConfig',
+    'Get-FlashArrayHierarchy',
+    'Get-FlashArrayQuickCapacityStats',
+    'Get-FlashArrayRASession',
+    'Get-FlashArrayVolumeGrowth',
+    'Get-FlashArrayConnectDetails',
+    'Remove-FlashArrayPendingDeletes',
+    'Restore-PfaPGroupVolumeSnapshots',
+    'Sync-FlashArrayHosts',
+    'New-FlashArrayPGroupVolumes',
+    'New-FlashArrayCapacityReport'
+)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

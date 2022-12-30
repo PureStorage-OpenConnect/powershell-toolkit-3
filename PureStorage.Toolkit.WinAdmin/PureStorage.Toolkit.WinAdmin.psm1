@@ -252,41 +252,80 @@ function New-FlashArrayReportPieChart() {
 }
 #endregion Helper functions
 
+function Get-FlashArraySerialNumbers() {
+    <#
+    .SYNOPSIS
+    Retrieves FlashArray disk serial numbers connected to the host.
+    .DESCRIPTION
+    Cmdlet retrieves disk serial numbers that are associated to Pure FlashArrays.
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
+    .INPUTS
+    CimSession is optional.
+    .OUTPUTS
+    Outputs serial numbers of FlashArrays devices.
+    .EXAMPLE
+    Get-FlashArraySerialNumbers -CimSession 'myComputer'
+
+    Returns serial number information on Pure FlashArray disk devices connected to the host.
+    #>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
+    )
+
+    Get-CimInstance -ClassName 'Win32_DiskDrive' -Filter 'Model LIKE ''PURE FlashArray%''' @PSBoundParameters | 
+    select 'Name', 'Caption', 'Index', 'SerialNumber'
+}
+
 function Get-HostBusAdapter() {
     <#
     .SYNOPSIS
-    Retrieves host Bus Adapater (HBA) information.
+    Retrieves host bus adapater (HBA) information.
     .DESCRIPTION
-    Retrieves host Bus Adapater (HBA) information for the host.
-    .PARAMETER ComputerName
-    Optional. The computer name to run the cmdlet against. It defaults to the local computer name.
+    Retrieves host bus adapater (HBA) information for the host.
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
     .INPUTS
-    Computer name is optional.
+    CimSession is optional.
     .OUTPUTS
-    Host Bus Adapter information.
+    Host bus adapater information.
     .EXAMPLE
-    Get-HostBusAdapter -ComputerName myComputer
+    Get-HostBusAdapter -CimSession 'myComputer'
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $False)] [string] $ComputerName  = "$env:COMPUTERNAME"
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
     )
 
-    try {
-        $port = Get-WmiObject -Class MSFC_FibrePortHBAAttributes -Namespace 'root\WMI' -ComputerName $ComputerName
-        $hbas = Get-WmiObject -Class MSFC_FCAdapterHBAAttributes -Namespace 'root\WMI' -ComputerName $ComputerName
-        $hbaProp = $hbas | Get-Member -MemberType Property, AliasProperty | Select-Object -ExpandProperty name | Where-Object { $_ -notlike '__*' }
-        $hbas = $hbas | Select-Object -ExpandProperty $hbaProp
-        $hbas | ForEach-Object { $_.NodeWWN = ((($_.NodeWWN) | ForEach-Object { '{0:x2}' -f $_ }) -join ':').ToUpper() }
+    function ConvertTo-HexAndColons([byte[]]$address) {
+        return (($address | foreach { '{0:x2}' -f $_ }) -join ':').ToUpper()
+    }
 
-        ForEach ($hba in $hbas) {
-            Add-Member -MemberType NoteProperty -InputObject $hba -Name FabricName -Value (($port | Where-Object { $_.instancename -eq $hba.instancename }).attributes | Select-Object @{ Name = 'Fabric Name'; Expression = { (($_.fabricname | ForEach-Object { '{0:x2}' -f $_ }) -join ':').ToUpper() } }, @{ Name = 'Port WWN'; Expression = { (($_.PortWWN | ForEach-Object { '{0:x2}' -f $_ }) -join ':').ToUpper() } }) -PassThru
+    try {
+        $ports = Get-CimInstance -Class 'MSFC_FibrePortHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters
+        $adapters = Get-CimInstance -Class 'MSFC_FCAdapterHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters
+
+        foreach ($adapter in $adapters) {
+            $attributes = $ports.Where({ $_.InstanceName -eq $adapter.InstanceName }, 'first').Attributes
+
+            $adapter | select -ExcludeProperty 'NodeWWN', 'Cim*' -Property *, 
+            @{n = 'NodeWWN'; e = { ConvertTo-HexAndColons $_.NodeWWN } }, 
+            @{n = 'FabricName'; e = { ConvertTo-HexAndColons $attributes.FabricName } }, 
+            @{n = 'PortWWN'; e = { ConvertTo-HexAndColons $attributes.PortWWN } }
         }
     }
-    catch {
-
+    catch [Microsoft.Management.Infrastructure.CimException] {
+        if ($_.Exception.NativeErrorCode -ne 'NotSupported') {
+            throw
+        }
     }
 }
+
 function Get-MPIODiskLBPolicy() {
     <#
     .SYNOPSIS
@@ -331,21 +370,33 @@ function Get-MPIODiskLBPolicy() {
         Invoke-Expression $expr
     }
 }
+
 function Get-QuickFixEngineering() {
     <#
     .SYNOPSIS
     Retrieves all the Windows OS QFE patches applied.
     .DESCRIPTION
     Retrieves all the Windows OS QFE patches applied.
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
     .INPUTS
-    None
+    CimSession is optional.
     .OUTPUTS
     Outputs a listing of QFE patches applied.
     .EXAMPLE
-    Get-QuickFixEngineering
+    Get-QuickFixEngineering -CimSession 'myComputer'
     #>
-    Get-WmiObject -Class Win32_QuickFixEngineering | Select-Object -Property Description, HotFixID, InstalledOn | Format-Table -Wrap
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
+    )
+
+    Get-CimInstance -Class 'Win32_QuickFixEngineering' @PSBoundParameters |
+    select Description, HotFixID, InstalledOn
 }
+
 function Get-VolumeShadowCopy() {
     <#
     .SYNOPSIS
@@ -396,6 +447,7 @@ function Get-VolumeShadowCopy() {
         Remove-Item $dsh -ErrorAction SilentlyContinue
     }
 }
+
 function Get-WindowsDiagnosticInfo() {
     <#
 
@@ -554,6 +606,7 @@ function Get-WindowsDiagnosticInfo() {
     Write-Host ""
     Write-Host "Information collection completed."
 }
+
 function New-VolumeShadowCopy() {
     <#
     .SYNOPSIS
@@ -604,48 +657,43 @@ function New-VolumeShadowCopy() {
     DISKSHADOW /s $dsh
     Remove-Item $dsh
 }
+
 function Register-HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to online.
     .DESCRIPTION
-    This cmdlet will set any FlashArray volumes (disks) to online in Windows using the diskpart command.
-    .PARAMETER ComputerName
-    Optional. The computer name to run the cmdlet against. It defaults to the local computer name.
+    This cmdlet will set any FlashArray volumes (disks) to online.
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
     .INPUTS
-    None
+    CimSession is optional.
     .OUTPUTS
     None
     .EXAMPLE
-    Register-HostVolumes -ComputerName myComputer
-
-    Sets all FlashArray disks for myComputer to online.
+    Register-HostVolumes -CimSession 'myComputer'
     #>
-    [CmdletBinding()]
+
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter(Mandatory = $False)] [string]$ComputerName = "$env:COMPUTERNAME"
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
     )
 
-    $cmds = "`"RESCAN`""
-    $scriptblock = [string]::Join(',', $cmds)
-    $diskpart = $ExecutionContext.InvokeCommand.NewScriptBlock("$scriptblock | DISKPART")
-    $result = Invoke-Command -ComputerName $ComputerName -ScriptBlock $diskpart
-    $disks = Invoke-Command -ComputerName $ComputerName { Get-Disk }
-#    $i = 0
-    ForEach ($disk in $disks) {
-        If ($disk.FriendlyName -like 'PURE FlashArray*') {
-            If ($disk.OperationalStatus -ne 1) {
-                $disknumber = $disk.Number
-                $cmds = "`"SELECT DISK $disknumber`"",
-                "`"ATTRIBUTES DISK CLEAR READONLY`"",
-                "`"ONLINE DISK`""
-                $scriptblock = [string]::Join(',', $cmds)
-                $diskpart = $ExecutionContext.InvokeCommand.NewScriptBlock("$scriptblock | DISKPART")
-                $result = Invoke-Command -ComputerName $ComputerName -ScriptBlock $diskpart -ErrorAction Stop
-            }
+    Update-HostStorageCache @PSBoundParameters
+    $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | where OperationalStatus -ne "Other"
+
+    foreach ($disk in $disks) {
+        if ($disk.IsReadOnly -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Remove read-only attribute")) {
+            $disk | Set-Disk -IsReadOnly $false @PSBoundParameters
+        }
+
+        if ($disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Set disk online")) {
+            $disk | Set-Disk -IsOffline $false @PSBoundParameters
         }
     }
 }
+
 enum MPIODiskLBPolicy {
     clear = 0
     FO    = 1
@@ -710,6 +758,7 @@ function Set-MPIODiskLBPolicy() {
     Write-Host 'New disk LB policy settings:' -ForegroundColor Green
     mpclaim.exe -s -d
 }
+
 function Backup-RegistryKey {
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([IO.FileInfo])]
@@ -1372,46 +1421,39 @@ function Test-WindowsBestPractices() {
     Write-Host ''
     Write-Log -Message "The Test-WindowsBestPractices cmdlet has completed." -Severity Information
 }
+
 function Unregister-HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to offline.
     .DESCRIPTION
-    This cmdlet will set any FlashArray volumes (disks) to offline in Windows using the diskpart command.
-    .PARAMETER ComputerName
-    Optional. The computer name to run the cmdlet against. It defaults to the local computer name.
+    This cmdlet will set any FlashArray volumes (disks) to offline.
+    .PARAMETER CimSession
+    Optional. A CimSession or computer name.
     .INPUTS
-    None
+    CimSession is optional.
     .OUTPUTS
     None
     .EXAMPLE
-    Unregister-HostVolumes -ComputerName myComputer
-
-    Offlines all FlashArray disks from myComputer.
+    Unregister-HostVolumes -CimSession 'myComputer'
     #>
-    [CmdletBinding()]
+
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter(Mandatory = $False)] [string]$Computername = "$env:COMPUTERNAME"
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [CimSession]$CimSession
     )
 
-    $cmds = "`"RESCAN`""
-    $scriptblock = [string]::Join(',', $cmds)
-    $diskpart = $ExecutionContext.InvokeCommand.NewScriptBlock("$scriptblock | DISKPART")
-    $result = Invoke-Command -ComputerName $Computername -ScriptBlock $diskpart
-    $disks = Invoke-Command -ComputerName $Computername { Get-Disk }
+    Update-HostStorageCache @PSBoundParameters
+    $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | where OperationalStatus -ne "Other"
+
     ForEach ($disk in $disks) {
-        If ($disk.FriendlyName -like 'PURE FlashArray*') {
-            If ($disk.OperationalStatus -ne 1) {
-                $disknumber = $disk.Number
-                $cmds = "`"SELECT DISK $disknumber`"",
-                "`"OFFLINE DISK`""
-                $scriptblock = [string]::Join(',', $cmds)
-                $diskpart = $ExecutionContext.InvokeCommand.NewScriptBlock("$scriptblock | DISKPART")
-                $result = Invoke-Command -ComputerName $Computername -ScriptBlock $diskpart -ErrorAction Stop
-            }
+        if (!$disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Set disk offline")) {
+            $disk | Set-Disk -IsOffline $true @PSBoundParameters
         }
     }
 }
+
 function Update-DriveInformation() {
     <#
     .SYNOPSIS
@@ -1445,7 +1487,7 @@ function Update-DriveInformation() {
     )
 
     $params = @{
-        Query    = "SELECT * FROM Win32_Volume WHERE DriveLetter = '$CurrentDriveLetter`:"
+        Query    = "SELECT * FROM Win32_Volume WHERE DriveLetter = '$CurrentDriveLetter`:'"
         Property = @{ DriveLetter = "$($NewDriveLetter):" }
     }
 
@@ -1461,7 +1503,16 @@ function Update-DriveInformation() {
 }
 
 # Declare exports
+Export-ModuleMember -Function Get-HostBusAdapter
+Export-ModuleMember -Function Get-FlashArraySerialNumbers
+Export-ModuleMember -Function Get-QuickFixEngineering
+Export-ModuleMember -Function Get-VolumeShadowCopy
+Export-ModuleMember -Function Get-MPIODiskLBPolicy
+Export-ModuleMember -Function Set-MPIODiskLBPolicy
 Export-ModuleMember -Function Set-TlsVersions
 Export-ModuleMember -Function Enable-SecureChannelProtocol
 Export-ModuleMember -Function Disable-SecureChannelProtocol
+Export-ModuleMember -Function Register-HostVolumes
+Export-ModuleMember -Function Unregister-HostVolumes
+Export-ModuleMember -Function Update-DriveInformation
 # END
