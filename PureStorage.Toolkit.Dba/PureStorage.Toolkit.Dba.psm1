@@ -1,3 +1,28 @@
+<#
+    ===========================================================================
+    Release version: 3.0.0.1
+    Revision information: Refer to the changelog.md file
+    ---------------------------------------------------------------------------
+    Maintained by:   FlashArray Integrations and Evangelsigm Team @ Pure Storage
+    Organization:    Pure Storage, Inc.
+    Filename:        PureStorage.Toolkit.FlashArray.Dba.psm1
+    Copyright:       (c) 2022 Pure Storage, Inc.
+    Module Name:     PureStorage.Toolkit.FlashArray.Dba
+    Description:     PowerShell Script Module (.psm1)
+    --------------------------------------------------------------------------
+    Disclaimer:
+    The sample module and documentation are provided AS IS and are not supported by the author or the author’s employer, unless otherwise agreed in writing. You bear
+    all risk relating to the use or performance of the sample script and documentation. The author and the author’s employer disclaim all express or implied warranties
+    (including, without limitation, any warranties of merchantability, title, infringement or fitness for a particular purpose). In no event shall the author, the author’s employer or anyone else involved in the creation, production, or delivery of the scripts be liable     for any damages whatsoever arising out of the use or performance of the sample script and     documentation (including, without limitation, damages for loss of business profits, business interruption, loss of business information, or other pecuniary loss), even if     such person has been advised of the possibility of such damages.
+    --------------------------------------------------------------------------
+    Contributors: Rob "Barkz" Barker @purestorage, Robert "Q" Quimbey @purestorage, Mike "Chief" Nelson, Julian "Doctor" Cates, Marcel Dussil @purestorage - https://en.pureflash.blog/ , Craig Dayton - https://github.com/cadayton , Jake Daniels - https://github.com/JakeDennis, Richard Raymond - https://github.com/data-sciences-corporation/PureStorage , The dbatools Team - https://dbatools.io , many more Puritans, and all of the Pure Code community who provide excellent advice, feedback, & scripts now and in the future.
+    ===========================================================================
+#>
+
+#Requires -Version 5
+#Requires -Modules @{ ModuleName="PureStoragePowerShellSDK2"; ModuleVersion="2.16" }
+#Requires -Modules @{ ModuleName="dbatools"; ModuleVersion="1.1" }
+
 #region Helper functions
 
 function Convert-Size {
@@ -268,12 +293,12 @@ Invoke-DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-
 .NOTES
 Note that it has dependencies on the dbatools and PureStoragePowerShellSDK  modules which are installed as part of this module.
 #>
+	[CmdletBinding()]
     param(
-        [parameter(mandatory = $true)][string] $SqlInstance,
-        [parameter(mandatory = $true)][string] $Database
+        [parameter(mandatory = $true)][Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
+        [parameter(mandatory = $true)][string] $Database,
+		[parameter(mandatory = $false)][pscredential] $SqlCredential
     )
-
-    Get-DbaToolsModule
 
     $sql = @"
 BEGIN
@@ -324,8 +349,9 @@ BEGIN
 END;
 "@
 
-    Invoke-DbaSqlQuery -SqlInstance $SqlInstance -Database $Database -Query $sql
+    Invoke-DbaQuery -Query $sql @PSBoundParameters
 }
+
 function Invoke-FlashArrayDbRefresh {
 <#
 .SYNOPSIS
@@ -856,6 +882,7 @@ function DbRefresh {
     Repair-DbaDbOrphanUser -SqlInstance $DestSqlInstance -Database $RefreshDatabase | Out-Null
     Write-Color -Text "Orphaned users            : ", "REPAIRED" -ForegroundColor Yellow, Green
 }
+
 function Invoke-StaticDataMasking {
 <#
 .SYNOPSIS
@@ -882,77 +909,65 @@ Invoke-StaticDataMasking -SqlInstance  Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-
 .NOTES
 Note that it has dependencies on the dbatools module which are installed with this module.
 #>
+    [CmdletBinding(SupportsShouldProcess)]
     param(
-        [parameter(mandatory = $true)] [string] $SqlInstance,
+        [parameter(mandatory = $true)] [Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
         [parameter(mandatory = $true)] [string] $Database,
-        [parameter(mandatory = $true)] [string] $DataMaskFile
+        [parameter(mandatory = $true)] [string] $DataMaskFile,
+        [parameter()] [pscredential] $SqlCredential,
+        [parameter()] [string[]] $Table
     )
 
-    Get-DbaToolsModule
+    $queryParams = @{
+        SqlInstance = $SqlInstace
+        Database = $Database
+        QueryTimeout = 999999
+    }
+
+    if ($PSBoundParameters.ContainsKey('SqlCredential')) {
+        $queryParams.Add('SqlCredential', $SqlCredential)
+    }
 
     if ($DataMaskFile.ToString().StartsWith('http')) {
-        $tables = Invoke-RestMethod -Uri $DataMaskFile
+        $config = Invoke-RestMethod -Uri $DataMaskFile
     }
     else {
-        # Check if the destination is accessible
-        if (-not (Test-Path -Path $DataMaskFile)) {
-            Write-Error "Could not find data mask config file $DataMaskFile"
-            Return
-        }
+        $config = Get-Content -Path $DataMaskFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     }
 
-    # Get all the items that should be processed
-    try {
-        $tables = Get-Content -Path $DataMaskFile -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-    }
-    catch {
-        Write-Error "Could not parse masking config file: $DataMaskFile" -ErrorRecord $_
-    }
-
-    foreach ($tabletest in $tables.Tables) {
-        if ($Table -and $tabletest.Name -notin $Table) {
+    foreach ($tabletest in $config.Tables) {
+        if (($Table -and $tabletest.Name -notin $Table) -or -not $PSCmdlet.ShouldProcess("[$($tabletest.Name)]", 'Statically mask table')){
             continue
         }
 
-        $ColumnIndex = 0
-        $UpdateStatement = ""
-
-        foreach ($columntest in $tabletest.Columns) {
-            if ($columntest.ColumnType -in 'varchar', 'char', 'nvarchar') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+        $columnExpressions = $tabletest.Columns.foreach{
+            $column = $_
+            $statement = switch($column.ColumnType) {
+                {$_ -in 'varchar', 'char', 'nvarchar'} {
+                    "SUBSTRING(CONVERT(VARCHAR, HASHBYTES('MD5', $($column.Name)), 1), 1, $($column.MaxValue))"
                 }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = SUBSTRING(CONVERT(VARCHAR, HASHBYTES(' + '''' + 'MD5' + '''' + ', ' + $columntest.Name + '), 1), 1, ' + $columntest.MaxValue + ')'
+                'int' {
+                    "ABS(CHECKSUM(NEWID())) % 2147483647"
                 }
-            }
-            elseif ($columntest.ColumnType -eq 'int') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                'bigint' {
+                    "ABS(CHECKSUM(NEWID()))"
                 }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID())) % 2147483647'
+                default {
+                    Write-Error "$($column.ColumnType) is not supported, please remove the column $($column.Name) from the $($table.Name) table"
                 }
             }
-            elseif ($columntest.ColumnType -eq 'bigint') {
-                if ($ColumnIndex -eq 0) {
-                    $UpdateStatement = 'UPDATE ' + $tabletest.Name + ' SET ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
-                }
-                else {
-                    $UpdateStatement += ', ' + $columntest.Name + ' = ABS(CHECKSUM(NEWID()))'
-                }
-            }
-            else {
-                Write-Error "$columntest.ColumnType is not supported, please remove the column $columntest.Name from the $tabletest.Name table"
-                Return
-            }
-            $ColumnIndex += 1
+            
+            "$($column.Name) = $statement"
         }
 
-        Write-Verbose "Statically masking table $tabletest.Name using $UpdateStatement"
-        Invoke-DbaQuery -ServerInstance $SqlInstance -Database $Database -Query $UpdateStatement -QueryTimeout 999999
+        $queryParams['Query'] = "UPDATE $($tabletest.Name) SET $($columnExpressions -join ', ')"
+
+        Write-Verbose "Statically masking table $($tabletest.Name) using $($queryParams['Query'])"
+
+        Invoke-DbaQuery @queryParams
     }
 }
+
 function New-FlashArrayDbSnapshot {
     <#
 .SYNOPSIS
@@ -991,103 +1006,105 @@ Known Restrictions
 Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modules which are installed as part of this module.
 #>
     param(
+        [parameter(mandatory = $true)] [Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
         [parameter(mandatory = $true)] [string] $Database,
-        [parameter(mandatory = $true)] [string] $SqlInstance,
-        [parameter(mandatory = $true)] [string] $Endpoint
+        [parameter(mandatory = $true)] [string] $Endpoint,
+        [parameter()] [pscredential] $SqlCredential,
+        [Parameter()] [pscredential] $Credential = ( Get-PfaCredential )
     )
 
-    Get-Sdk1Module
-    Get-DbaToolsModule
+    $sqlParams = @{
+        SqlInstance = $SqlInstance
+    }
 
-    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-
-    if ( ! $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) ) {
-        Write-Error "This function needs to be invoked within a PowerShell session with elevated admin rights"
-        Return
+    if ($PSBoundParameters.ContainsKey('SqlCredential')) {
+        $sqlParams.Add('SqlCredential', $SqlCredential)
     }
 
     # Connect to FlashArray
-    if (!($Creds)) {
+    try {
+        $flashArray = Connect-Pfa2Array -EndPoint $EndPoint -Credentials $Credential -IgnoreCertificateError
+    }
+    catch {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $exceptionMessage"
+        Return
+    }
+
+    try {
+        Write-Colour -Text 'FlashArray endpoint       : ', 'CONNECTED' -Color Yellow, Green
+
         try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
+            $destDb = Get-DbaDatabase @sqlParams -Database $Database
         }
         catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to connect to destination database $SqlInstance.$Database with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target SQL Server instance: ', $SqlInstance, ' - ', 'CONNECTED' -Color Yellow, Green, Green, Green
+        Write-Colour -Text 'Target windows drive      : ', $destDb.PrimaryFilePath.Split(':')[0] -Color Yellow, Green
+
+        try {
+            $sqlInstance = Connect-DbaInstance @sqlParams
+            $targetServer = $SqlInstance.ComputerNamePhysicalNetBIOS
+            $sqlInstance | Disconnect-DbaInstance 
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine target server name with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target SQL Server host    : ', $targetServer -ForegroundColor Yellow, Green
+
+        $getDbDisk = { param ( $filePath )
+            $dbDisk = Get-Partition -DriveLetter $filePath.Split(':')[0] | Get-Disk
+            return $dbDisk
+        }
+
+        try {
+            $targetDisk = Invoke-Command -ComputerName $targetServer -ScriptBlock $getDbDisk -ArgumentList $destDb.PrimaryFilePath
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine the windows disk snapshot target with: $exceptionMessage"
+            Return
+        }
+
+        Write-Colour -Text 'Target disk serial number : ', $targetDisk.SerialNumber -Color Yellow, Green
+
+        try {
+            $targetVolume = (Get-Pfa2Volume -Array $flashArray | Where-Object { $_.serial -eq $targetDisk.SerialNumber }).Name
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to determine snapshot FlashArray volume with: $exceptionMessage"
+            Return
+        }
+
+        $snapshotSuffix = '{0}-{1}-{2:HHmmss}' -f $SqlInstance.FullName.Replace('\', '-'), $Database, (Get-Date)
+        Write-Colour -Text 'Snapshot target Pfa volume: ', $targetVolume -Color Yellow, Green
+        Write-Colour -Text 'Snapshot suffix           : ', $snapshotSuffix -Color Yellow, Green
+
+        try {
+            New-Pfa2VolumeSnapshot -Array $flashArray -Sources $targetVolume -Suffix $snapshotSuffix
+        }
+        catch {
+            $exceptionMessage = $_.Exception.Message
+            Write-Error "Failed to create snapshot for target database FlashArray volume with: $exceptionMessage"
             Return
         }
     }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-
-    Write-Colour -Text "FlashArray endpoint       : ", "CONNECTED" -Color Yellow, Green
-
-    try {
-        $DestDb = Get-DbaDatabase -SqlInstance $SqlInstance -Database $Database
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to connect to destination database $SqlInstance.$Database with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Colour -Text "Target SQL Server instance: ", $SqlInstance, " - ", "CONNECTED" -Color Yellow, Green, Green, Green
-    Write-Colour -Text "Target windows drive      : ", $DestDb.PrimaryFilePath.Split(':')[0] -Color Yellow, Green
-
-    try {
-        $TargetServer = (Connect-DbaInstance -SqlInstance $SqlInstance).ComputerNamePhysicalNetBIOS
-    }
-    catch {
-        Write-Error "Failed to determine target server name with: $ExceptionMessage"
-    }
-
-    Write-Colour -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
-
-    $GetDbDisk = { param ( $Db )
-        $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
-        return $DbDisk
-    }
-
-    try {
-        $TargetDisk = Invoke-Command -ComputerName $TargetServer -ScriptBlock $GetDbDisk -ArgumentList $DestDb
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine the windows disk snapshot target with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Colour -Text "Target disk serial number : ", $TargetDisk.SerialNumber -Color Yellow, Green
-
-    try {
-        $TargetVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $TargetDisk.SerialNumber } | Select-Object name
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine snapshot FlashArray volume with: $ExceptionMessage"
-        Return
-    }
-
-    $SnapshotSuffix = $SqlInstance.Replace('\', '-') + '-' + $Database + '-' + $(Get-Date).Hour + $(Get-Date).Minute + $(Get-Date).Second
-    Write-Colour -Text "Snapshot target Pfa volume: ", $TargetVolume.name -Color Yellow, Green
-    Write-Colour -Text "Snapshot suffix           : ", $SnapshotSuffix -Color Yellow, Green
-
-    try {
-        New-PfaVolumeSnapshots -Array $FlashArray -Sources $TargetVolume.name -Suffix $SnapshotSuffix
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to create snapshot for target database FlashArray volume with: $ExceptionMessage"
-        Return
+    finally {
+        Disconnect-Pfa2Array $flashArray
     }
 }
+
 # Declare exports
+Export-ModuleMember -Function Invoke-DynamicDataMasking
+Export-ModuleMember -Function Invoke-StaticDataMasking
+Export-ModuleMember -Function New-FlashArrayDbSnapshot
+Export-ModuleMember -Function Invoke-FlashArrayDbRefresh
 # END
