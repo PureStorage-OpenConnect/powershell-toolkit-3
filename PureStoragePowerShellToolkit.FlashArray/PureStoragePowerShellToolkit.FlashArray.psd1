@@ -29,13 +29,13 @@ RootModule = 'PureStoragePowerShellToolkit.FlashArray.psm1'
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.1'
+ModuleVersion = '3.0.0.2'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
 
 # ID used to uniquely identify this module
-GUID = '78b97dbd-d9f9-4414-b6ff-b0fba3487042'
+GUID = '0b8311a9-dcd1-4ca9-9b04-b8b63e006072'
 
 # Author of this module
 Author = 'Pure Storage'
@@ -68,9 +68,7 @@ CLRVersion = ''
 ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @(
-    @{ ModuleName="PureStoragePowerShellSDK2"; ModuleVersion="2.16"; GUID = 'a12b790d-4a25-46c3-a457-910bc7203e1f'}
-)
+RequiredModules = @()
 
 # Assemblies that must be loaded prior to importing this module
 RequiredAssemblies = @()
@@ -85,7 +83,7 @@ TypesToProcess = @()
 FormatsToProcess = @()
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-NestedModules = @()
+#NestedModules = @('Show-ModuleLoadBanner.ps1')
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(

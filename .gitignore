@@ -362,3 +362,6 @@ MigrationBackup/
 FodyWeavers.xsd
 out
 .vscode
+
+# PSScriptAnalyzer settings file
+PSScriptAnalyzerSettings.psd1
