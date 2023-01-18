@@ -20,7 +20,7 @@
 #>
 
 #Requires -Version 5
-#Requires -Modules @{ ModuleName="PureStoragePowerShellSDK2"; ModuleVersion="2.16" }
+#Requires -Modules 'PureStoragePowerShellToolkit.FlashArray'
 #Requires -Modules @{ ModuleName="dbatools"; ModuleVersion="1.1" }
 
 #region Helper functions
@@ -678,7 +678,7 @@ Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modul
         $JobNumber = 1
         Foreach ($DestSqlInstance in $DestSqlInstances) {
             $JobName = "DbRefresh" + $JobNumber
-            Write-Colour -Text "Refresh background job    : ", $JobName, " - ", "PROCESSING" -Color Yellow, Green, Green, Green
+            Write-Color -Text "Refresh background job    : ", $JobName, " - ", "PROCESSING" -Color Yellow, Green, Green, Green
             If ( $RefreshFromSnapshot.IsPresent ) {
                 Start-Job -Name $JobName -ScriptBlock $Function:DbRefresh -ArgumentList $DestSqlInstance   , `
                     $RefreshDatabase   , `
@@ -716,7 +716,7 @@ Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modul
             }
         }
 
-        Write-Colour -Text "Refresh background jobs   : ", "COMPLETED" -Color Yellow, Green
+        Write-Color -Text "Refresh background jobs   : ", "COMPLETED" -Color Yellow, Green
 
         foreach ($job in (Get-Job | Where-Object { $_.Name.Contains("DbRefresh") })) {
             $result = Receive-Job $job
@@ -781,7 +781,7 @@ function DbRefresh {
     }
 
     Write-Host " "
-    Write-Colour -Text "Target SQL Server instance: ", $DestSqlInstance, "- CONNECTED" -ForegroundColor Yellow, Green, Green
+    Write-Color -Text "Target SQL Server instance: ", $DestSqlInstance, "- CONNECTED" -ForegroundColor Yellow, Green, Green
 
     try {
         $TargetServer = (Connect-DbaInstance -SqlInstance $DestSqlInstance).ComputerNamePhysicalNetBIOS
@@ -790,7 +790,7 @@ function DbRefresh {
         Write-Error "Failed to determine target server name with: $ExceptionMessage"
     }
 
-    Write-Colour -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
+    Write-Color -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
 
     $GetDbDisk = { param ( $Db )
         $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
@@ -820,7 +820,7 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target drive letter       : ", $DestDb.PrimaryFilePath.Split(':')[0] -ForegroundColor Yellow, Green
+    Write-Color -Text "Target drive letter       : ", $DestDb.PrimaryFilePath.Split(':')[0] -ForegroundColor Yellow, Green
 
     try {
         $DestVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $DestDisk.SerialNumber } | Select-Object name
@@ -835,7 +835,7 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target Pfa volume         : ", $DestVolume.name -ForegroundColor Yellow, Green
+    Write-Color -Text "Target Pfa volume         : ", $DestVolume.name -ForegroundColor Yellow, Green
 
     $OfflineDestDisk = { param ( $DiskNumber, $Status )
         Set-Disk -Number $DiskNumber -IsOffline $Status
@@ -856,7 +856,7 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target database           : ", "OFFLINE" -ForegroundColor Yellow, Green
+    Write-Color -Text "Target database           : ", "OFFLINE" -ForegroundColor Yellow, Green
 
     try {
         if ( $NoPsRemoting ) {
@@ -872,12 +872,12 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target windows disk       : ", "OFFLINE" -ForegroundColor Yellow, Green
+    Write-Color -Text "Target windows disk       : ", "OFFLINE" -ForegroundColor Yellow, Green
 
     $StartCopyVolMs = Get-Date
 
     try {
-        Write-Colour -Text "Source Pfa volume         : ", $SourceVolume -ForegroundColor Yellow, Green
+        Write-Color -Text "Source Pfa volume         : ", $SourceVolume -ForegroundColor Yellow, Green
         New-PfaVolume -Array $FlashArray -VolumeName $DestVolume.name -Source $SourceVolume -Overwrite
     }
     catch {
@@ -888,9 +888,9 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Volume overwrite          : ", "SUCCESSFUL" -ForegroundColor Yellow, Green
+    Write-Color -Text "Volume overwrite          : ", "SUCCESSFUL" -ForegroundColor Yellow, Green
     $EndCopyVolMs = Get-Date
-    Write-Colour -Text "Overwrite duration (ms)   : ", ($EndCopyVolMs - $StartCopyVolMs).TotalMilliseconds -Color Yellow, Green
+    Write-Color -Text "Overwrite duration (ms)   : ", ($EndCopyVolMs - $StartCopyVolMs).TotalMilliseconds -Color Yellow, Green
 
     $SetVolumeLabel = { param ( $Db, $DestVolumeLabel )
         Set-Volume -DriveLetter $Db.PrimaryFilePath.Split(':')[0] -NewFileSystemLabel $DestVolumeLabel
@@ -912,7 +912,7 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target windows disk       : ", "ONLINE" -ForegroundColor Yellow, Green
+    Write-Color -Text "Target windows disk       : ", "ONLINE" -ForegroundColor Yellow, Green
 
     try {
         $DestDb.SetOnline()
@@ -923,7 +923,7 @@ function DbRefresh {
         Return
     }
 
-    Write-Colour -Text "Target database           : ", "ONLINE" -ForegroundColor Yellow, Green
+    Write-Color -Text "Target database           : ", "ONLINE" -ForegroundColor Yellow, Green
 
     if ( $ApplyDataMasks ) {
         Write-Host "Applying SQL Server dynamic data masks to $RefreshDatabase on SQL Server instance $DestSqlInstance" -ForegroundColor Yellow

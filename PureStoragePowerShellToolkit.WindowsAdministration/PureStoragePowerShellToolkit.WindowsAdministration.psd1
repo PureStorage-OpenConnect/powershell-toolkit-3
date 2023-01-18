@@ -29,7 +29,7 @@ RootModule = 'PureStoragePowerShellToolkit.WindowsAdministration.psm1'
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.1'
+ModuleVersion = '3.0.0.2'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
@@ -91,9 +91,11 @@ FunctionsToExport = @(
     'Get-FlashArraySerialNumbers',
     'Get-QuickFixEngineering',
     'Get-VolumeShadowCopy',
+    'Get-WindowsDiagnosticInfo',
     'Get-MPIODiskLBPolicy',
     'Set-MPIODiskLBPolicy',
     'Set-TlsVersions',
+    'Set-WindowsPowerScheme',
     'Enable-SecureChannelProtocol',
     'Disable-SecureChannelProtocol',
     'Register-HostVolumes',

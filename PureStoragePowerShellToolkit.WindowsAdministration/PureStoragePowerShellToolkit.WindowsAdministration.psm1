@@ -639,134 +639,159 @@ function Get-WindowsDiagnosticInfo() {
     .NOTES
     This cmdlet requires Administrative permissions.
     #>
+
     [cmdletbinding()]
     Param(
-        [Parameter(ValuefromPipeline = $false, Mandatory = $false)][switch]$Cluster,
-        [Parameter(ValuefromPipeline = $false, Mandatory = $false)][switch]$Compress
+        [Parameter()][string]$Path = "$env:computername",
+        [Parameter()][switch]$Cluster,
+        [Parameter()][switch]$Compress
     )
-    Get-ElevatedStatus
-    # create root outfile
-    $folder = Test-Path -PathType Container -Path "c:\$env:computername"
-    if ($folder -eq "false") {
-        New-Item -Path "c:\$env:computername" -ItemType "directory" | Out-Null
-    }
-    Set-Location -Path "c:\$env:computername"
-    Write-Host ""
 
-    # system information
-    Write-Host "Retrieving MSInfo32 information. This will take some time to complete. Please wait..." -ForegroundColor Yellow
-    msinfo32 /report msinfo32.txt | Out-Null
-    Write-Host "Completed MSInfo32 information." -ForegroundColor Green
-    Write-Host ""
-    ## hotfixes
-    Write-Host "Retrieving Hotfix information..." -ForegroundColor Yellow
-    Get-WmiObject -Class Win32_QuickFixEngineering | Select-Object -Property Description, HotFixID, InstalledOn | Format-Table -Wrap -AutoSize | Out-File  "HotfixesQFE.txt"
-    Get-HotFix | Format-Table -Wrap -AutoSize | Out-File "Get-Hotfix.txt"
-    Write-Host "Completed HotfixQFE information." -ForegroundColor Green
-    Write-Host ""
+    {
+        # System Information
+        {msinfo32 /report msinfo32.txt | Out-Null} | Get-Diagnostic -header 'system information'
 
-    # storage information
-    New-Item -Path "c:\$env:computername\storage" -ItemType "directory" | Out-Null
-    Set-Location -Path "c:\$env:computername\storage"
-    Write-Host "Retrieving Storage information..." -ForegroundColor Yellow
-    fsutil behavior query DisableDeleteNotify | Out-File "fsutil_behavior_DisableDeleteNotify.txt"
-    Get-PhysicalDisk | Select-Object * | Out-File "Get-PhysicalDisk.txt"
-    Get-Disk | Select-Object * | Out-File "Get-Disk.txt"
-    Get-Volume | Select-Object * | Out-File "Get-Volume.txt"
-    Get-Partition | Select-Object * | Out-File "Get-Partition.txt"
-    Write-Host "    Completed Disk information." -ForegroundColor Green
-    Write-Host ""
-    ## disk, MPIO, and MSDSM information
-    Write-Host "    Retrieving MPIO and MSDSM information..." -ForegroundColor Yellow
-    Get-ItemProperty "HKLM:\System\CurrentControlSet\Services\MSDSM\Parameters" | Out-File "Get-ItemProperty_msdsm.txt"
-    Get-MSDSMGlobalDefaultLoadBalancePolicy | Out-File "Get-ItemProperty_msdsm_load_balance_policy.txt"
-    Get-ItemProperty "HKLM:\System\CurrentControlSet\Services\mpio\Parameters" | Out-File "Get-ItemProperty_mpio.txt"
-    Get-ItemProperty "HKLM:\System\CurrentControlSet\Services\Disk" | Out-File "Get-ItemProperty_disk.txt"
-    mpclaim -s -d | Out-File "mpclaim_-s_-d.txt"
-    mpclaim -v | Out-File "mpclaim_-v.txt"
-    Get-MPIOSetting | Out-File "Get-MPIOSetting.txt"
-    Get-MPIOAvailableHW | Out-File "Get-MPIOAvailableHW.txt"
-    Write-Host "    Completed MPIO, & MSDSM information." -ForegroundColor Green
-    Write-Host ""
-    ## Fibre Channel information
-    Write-Host "    Retrieving Fibre Channel information..." -ForegroundColor Yellow
-    winrm e wmi/root/wmi/MSFC_FCAdapterHBAAttributes > MSFC_FCAdapterHBAAttributes.txt
-    winrm e wmi/root/wmi/MSFC_FibrePortHBAAttributes > MSFC_FibrePortHBAAttributes.txt
-    Get-InitiatorPort | Out-File "Get-InitiatorPort.txt"
-    Write-Host "    Completed Fibre Channel information." -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Completed Storage information." -ForegroundColor Green
-    Write-Host ""
+        # Hotfixes
+        { Get-HotFix | Format-Table -Wrap -AutoSize | Out-File 'Get-Hotfix.txt' } | Get-Diagnostic -header 'hotfix information'
 
-    # Network information
-    New-Item -Path "c:\$env:computername\network" -ItemType "directory" | Out-Null
-    Set-Location -Path "c:\$env:computername\network"
-    Write-Host "Retrieving Network information..." -ForegroundColor Yellow
-    Get-NetAdapter | Format-Table Name, ifIndex, Status, MacAddress, LinkSpeed, InterfaceDescription -AutoSize | Out-File "Get-NetAdapter.txt"
-    Get-NetAdapterAdvancedProperty | Format-Table DisplayName, DisplayValue, ValidDisplayValues | Out-File "Get-NetAdapterAdvancedProperty.txt" -Width 160
-    Write-Host "Completed Network information." -ForegroundColor Green
-    Write-Host ""
+        # Storage
+        {
+            # Disk
+            {
+                fsutil behavior query DisableDeleteNotify | Out-File 'fsutil_behavior_DisableDeleteNotify.txt'
+                Get-PhysicalDisk | Format-List            | Out-File 'Get-PhysicalDisk.txt'
+                Get-Disk | Format-List                    | Out-File 'Get-Disk.txt'
+                Get-Volume | Format-List                  | Out-File 'Get-Volume.txt'
+                Get-Partition | Format-List               | Out-File 'Get-Partition.txt'
+            } | Get-Diagnostic -header 'disk information'
 
-    # Event Logs in evtx format
-    New-Item -Path "c:\$env:computername\eventlogs" -ItemType "directory" | Out-Null
-    Set-Location -Path "c:\$env:computername\eventlogs"
-    Write-Host "Retrieving Event Logs unfiltered." -ForegroundColor Yellow
-    wevtutil epl System "systemlog.evtx"
-    wevtutil epl Setup "setuplog.evtx"
-    wevtutil epl Security "securitylog.evtx"
-    wevtutil epl Application "applicationlog.evtx"
-    Write-Host "   Completed .evtx log files." -ForegroundColor Green
-    ## create locale files
-    wevtutil al "systemlog.evtx"
-    wevtutil al "setuplog.evtx"
-    wevtutil al "securitylog.evtx"
-    wevtutil al "applicationlog.evtx"
-    Write-Host "   Completed locale .evtx log files." -ForegroundColor Green
-    ## get error & warning events & export to csv
-    Write-Host "Retrieving filtered Event Logs. This will take some time to complete. Please wait..." -ForegroundColor Yellow
-    Get-WinEvent -FilterHashtable @{LogName = 'Application'; 'Level' = 1, 2, 3 } -ErrorAction SilentlyContinue | Export-Csv "application_log-CRITICAL_ERROR_WARNING.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'System'; 'Level' = 1, 2, 3 } -ErrorAction SilentlyContinue | Export-Csv "system_log-CRITICAL_ERROR_WARNING.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'Security'; 'Level' = 1, 2, 3 } -ErrorAction SilentlyContinue | Export-Csv "security_log-CRITICAL_ERROR_WARNING.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'Setup'; 'Level' = 1, 2, 3 } -ErrorAction SilentlyContinue | Export-Csv "setup_log-CRITICAL_ERROR_WARNING.csv" -NoTypeInformation
-    Write-Host "   Completed Critical, Error, & Warning .csv log files." -ForegroundColor Green
-    ## get information events & export to csv
-    Get-WinEvent -FilterHashtable @{LogName = 'Application'; 'Level' = 4 } -ErrorAction SilentlyContinue | Export-Csv "application_log-INFO.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'System'; 'Level' = 4 } -ErrorAction SilentlyContinue | Export-Csv "system_log-INFO.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'Security'; 'Level' = 4 } -ErrorAction SilentlyContinue | Export-Csv "security_log-INFO.csv" -NoTypeInformation
-    Get-WinEvent -FilterHashtable @{LogName = 'Setup'; 'Level' = 4 } -ErrorAction SilentlyContinue | Export-Csv "setup_log-INFO.csv" -NoTypeInformation
-    Write-Host "   Completed Informational .csv log files." -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Completed Event Logs." -ForegroundColor Green
-    Write-Host ""
+            # MPIO
+            {
+                if (Test-Path "$env:systemroot\System32\mpclaim.exe") {
+                    mpclaim -s -d | Out-File 'mpclaim_-s_-d.txt'
+                    mpclaim -v    | Out-File 'mpclaim_-v.txt'
+                }
 
-    # WSFC inforation
-    If ($Cluster.IsPresent) {
-        New-Item -Path "c:\$env:computername\cluster" -ItemType "directory" | Out-Null
-        Set-Location -Path "c:\$env:computername\cluster"
-        Write-Host "Retrieving Cluster Logs. This may take some time to complete. Please wait..." -ForegroundColor Yellow
-        Get-ClusterLog -Destination . | Out-Null
-        Get-ClusterSharedVolume | Select-Object * | Out-File "Get-ClusterSharedVolume.txt"
-        Get-ClusterSharedVolumeState | Select-Object * | Out-File "Get-ClusterSharedVolumeState.txt"
-        Write-Host "Completed Cluster information." -ForegroundColor Green
-        Write-Host ""
-    }
+                if (Get-Module -ListAvailable 'mpio') {
+                    Get-MPIOSetting                         | Out-File 'Get-MPIOSetting.txt'
+                    Get-MPIOAvailableHW                     | Out-File 'Get-MPIOAvailableHW.txt'
+                    Get-MSDSMGlobalDefaultLoadBalancePolicy | Out-File 'Get-MSDSMGlobalDefaultLoadBalancePolicy.txt'
+                }
 
-    # Compress folder
-    If ($Compress.IsPresent) {
-        Write-Host "Starting folder compression. Please wait..." -ForegroundColor Yellow
-        Set-Location -Path "\"
-        $compress = @{
-            Path             = "c:\$env:computername"
-            CompressionLevel = "Optimal"
-            DestinationPath  = $env:computername + "_diagnostics.zip"
+                $root = 'HKLM:\System\CurrentControlSet\Services'
+                $keys = @(
+                    @{'service' = 'MSDSM';
+                        'key'   = 'MSDSM\Parameters';
+                        'file'  = 'Get-ItemProperty_msdsm.txt'
+                    },
+                    @{'service' = 'mpio';
+                        'key'   = 'mpio\Parameters';
+                        'file'  = 'Get-ItemProperty_mpio.txt'
+                    },
+                    @{'service' = 'Disk';
+                        'key'   = 'Disk';
+                        'file'  = 'Get-ItemProperty_disk.txt'
+                    }
+                )
+
+                $keys | where { Join-Path $root $_.service | Test-Path } | foreach { Join-Path $root $_.key | Get-ItemProperty | Out-File $_.file }
+            } | Get-Diagnostic -header 'MPIO information'
+
+            # Fibre Channel
+            {
+                winrm e wmi/root/wmi/MSFC_FCAdapterHBAAttributes 2>&1 | Out-File 'MSFC_FCAdapterHBAAttributes.txt'
+                winrm e wmi/root/wmi/MSFC_FibrePortHBAAttributes 2>&1 | Out-File 'MSFC_FibrePortHBAAttributes.txt'
+                Get-InitiatorPort                                     | Out-File 'Get-InitiatorPort.txt'
+            } | Get-Diagnostic -header 'fibre channel information'
+
+        } | Get-Diagnostic -header 'storage information' -location 'storage'
+
+        # Network
+        {
+            Get-NetAdapter                 | Format-Table -AutoSize -Wrap | Out-File 'Get-NetAdapter.txt'
+            Get-NetAdapterAdvancedProperty | Format-Table -AutoSize -Wrap | Out-File 'Get-NetAdapterAdvancedProperty.txt'
+        } | Get-Diagnostic -header 'network information' -location 'network'
+
+        # Event Logs
+        {
+            $logs = @('System', 'Setup', 'Security', 'Application')
+
+            # Export
+            {
+                $logs | foreach { wevtutil epl $_ "$_.evtx" /ow }
+            } | Get-Diagnostic -header 'event log files'
+
+            # Locale-specific messages
+            {
+                $logs | foreach { wevtutil al "$_.evtx" }
+            } | Get-Diagnostic -header 'locale-specific information'
+
+            #Get critical, error, & warning events
+            {
+                $logs | foreach { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 1, 2, 3 } -ea SilentlyContinue | Export-Csv "$_-CRITICAL.csv" -NoTypeInformation }
+            } | Get-Diagnostic -header 'critical, error, & warning events'
+
+            # Get informational events
+            {
+                $logs | foreach { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 4 } -ea SilentlyContinue | Export-Csv "$_-INFO.csv" -NoTypeInformation }
+            } | Get-Diagnostic -header 'informational events'
+        } | Get-Diagnostic -header 'event log' -location 'log'
+
+        # WSFC inforation
+        If ($Cluster) {
+            {
+                Get-ClusterLog -Destination '.' | Out-Null
+                Get-ClusterSharedVolume      | Select-Object * | Out-File 'Get-ClusterSharedVolume.txt'
+                Get-ClusterSharedVolumeState | Select-Object * | Out-File 'Get-ClusterSharedVolumeState.txt'
+            } | Get-Diagnostic -header 'cluster information' -location 'cluster'
         }
-        Compress-Archive @compress
-        Write-Host "Completed folder compression." -ForegroundColor Green
+    } | Get-Diagnostic -header 'diagnostic information' -location $Path -long
+
+    # Compress
+    If ($Compress) {
+        $params = @{
+            Path             = $Path
+            CompressionLevel = 'Optimal'
+            DestinationPath  = $Path + '_diagnostics.zip'
+        }
+
+        Compress-Archive @params -Force
     }
-    Write-Host ""
-    Write-Host "Information collection completed."
 }
 
+function Get-Diagnostic() {
+    param(
+        [Parameter(ValueFromPipeline)]
+        [scriptblock]$command,
+        [string]$header = 'diagnostic',
+        [string]$location,
+        [switch]$long
+    )
+
+    $message = "Retrieving $header"
+    $message += if (-not $long) { '...' } else { '. This will take some time to complete. Please wait...' }
+
+    Write-Host $message -ForegroundColor Yellow
+
+    if ($location) {
+        if (-not (Test-Path $location -PathType Container)) {
+            New-Item $location -ItemType 'Directory' | Out-Null
+        }
+
+        Push-Location $location
+    }
+
+    try {
+        Invoke-Command $command
+    }
+    finally {
+        if ($location) {
+            Pop-Location
+        }
+
+        Write-Host "Retrieving $header completed." -ForegroundColor Green
+    }
+}
 function New-VolumeShadowCopy() {
     <#
     .SYNOPSIS
@@ -1256,41 +1281,57 @@ function Set-TlsVersions {
 function Set-WindowsPowerScheme() {
     <#
     .SYNOPSIS
-    Cmdlet to set the Power scheme for the Windows OS to High Performance.
+    Cmdlet to set the Power scheme for the Windows OS.
     .DESCRIPTION
-    Cmdlet to set the Power scheme for the Windows OS to High Performance.
-    .PARAMETER ComputerName
-    Optional. The computer name to run the cmdlet against. It defaults to the local computer name.
+    Cmdlet to set the Power scheme for the Windows OS to High Performance if no scheme id is specified.
+    .PARAMETER PlanId
+    Optional. A PlanId to activate on the system.
+    .PARAMETER Session
+    Optional. A PSSession to the remote computer.
     .INPUTS
-    None
+    Session is optional.
     .OUTPUTS
-    Current power scheme and optional confirmation to alter the setting in the Windows registry.
+    None
     .EXAMPLE
     Set-WindowsPowerScheme
 
     Retrieves the current Power Scheme setting, and if not set to High Performance, asks for confirmation to set it.
+    .EXAMPLE
+    $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
+    Set-WindowsPowerScheme -Session $pssession
+
+    Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, asks for confirmation to set it.
     #>
-    [CmdletBinding()]
+
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter(Mandatory = $False)] [string] $ComputerName = "$env:COMPUTERNAME"
+        [Parameter()]
+        [guid]$PlanId = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c",
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [System.Management.Automation.Runspaces.PSSession]$Session
     )
-    $PowerScheme = Get-WmiObject -Class WIN32_PowerPlan -Namespace 'root\cimv2\power' -ComputerName $ComputerName -Filter "isActive='true'"
-    if ($PowerScheme.ElementName -ne "High performance") {
-        Write-Host "WARNING" -ForegroundColor Yellow -NoNewline
-        Write-Host ": Computer Power Scheme is not set to High Performance. Pure Storage best practice is to set this power plan as default."
-        Write-Host " "
-        Write-Host "REQUIRED ACTION: Set the Power Plan to High Performance?"
-        $resp = Read-Host -Prompt "Y/N?"
-        if ($resp.ToUpper() -eq 'Y') {
-            $planId = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
-            powercfg -setactive "$planId"
+
+    $params = @{}
+    if ($PSBoundParameters.ContainsKey('Session')) {
+        $params.Add('Session', $Session)
+    }
+
+    Invoke-Command {
+        [CmdletBinding(SupportsShouldProcess)]
+        Param ($p, $c, $w)
+
+        $ConfirmPreference = $c
+        $WhatIfPreference = $w
+
+        $scheme = Get-CimInstance -Class 'Win32_PowerPlan' -Namespace 'root\cimv2\power' -Filter 'isActive=True'
+        if ($scheme.InstanceID -ne "Microsoft:PowerPlan\{$p}") {
+            if ($PSCmdlet.ShouldProcess("power scheme $p", 'set active')) {
+                powercfg /setactive $p
+            }
         }
-    }
-    else {
-        Write-Host "PASSED" -ForegroundColor Green -NoNewline
-        Write-Host ": Computer Power Scheme is already set to High Performance. Exiting."
-    }
+    } -ArgumentList @($PlanId, $ConfirmPreference, $WhatIfPreference) @params
 }
+
 function Test-WindowsBestPractices() {
     <#
     .SYNOPSIS
@@ -1817,9 +1858,11 @@ Export-ModuleMember -Function Get-HostBusAdapter
 Export-ModuleMember -Function Get-FlashArraySerialNumbers
 Export-ModuleMember -Function Get-QuickFixEngineering
 Export-ModuleMember -Function Get-VolumeShadowCopy
+Export-ModuleMember -Function Get-WindowsDiagnosticInfo
 Export-ModuleMember -Function Get-MPIODiskLBPolicy
 Export-ModuleMember -Function Set-MPIODiskLBPolicy
 Export-ModuleMember -Function Set-TlsVersions
+Export-ModuleMember -Function Set-WindowsPowerScheme
 Export-ModuleMember -Function Enable-SecureChannelProtocol
 Export-ModuleMember -Function Disable-SecureChannelProtocol
 Export-ModuleMember -Function Register-HostVolumes
