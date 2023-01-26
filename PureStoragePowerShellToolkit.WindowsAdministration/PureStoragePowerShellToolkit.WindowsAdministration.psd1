@@ -96,11 +96,13 @@ FunctionsToExport = @(
     'Set-MPIODiskLBPolicy',
     'Set-TlsVersions',
     'Set-WindowsPowerScheme',
+    'New-VolumeShadowCopy',
     'Enable-SecureChannelProtocol',
     'Disable-SecureChannelProtocol',
     'Register-HostVolumes',
     'Unregister-HostVolumes',
-    'Update-DriveInformation'
+    'Update-DriveInformation',
+    'Test-WindowsBestPractices'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
