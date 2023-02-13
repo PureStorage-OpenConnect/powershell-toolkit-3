@@ -464,7 +464,7 @@ is not applicable is the PromptForSnapshot switch is specified.
 .PARAMETER PromptForSnapshot
 Optional. This is an optional flag that if specified will result in a list of snapshots being displayed for the database volume on
 the FlashArray that the user can select one from. Despite the source of the refresh operation being an existing snapshot,
- the source instance still has to be specified by the RefreshSource parameter in order that the function can determine
+the source instance still has to be specified by the RefreshSource parameter in order that the function can determine
 which FlashArray volume to list existing snapshots for.
 
 .PARAMETER RefreshFromSnapshot
@@ -561,400 +561,299 @@ Known Restrictions
 
 Note that it has dependencies on the dbatools and PureStoragePowerShellSDK modules which are installed by this module.
 #>
+    [CmdletBinding()]
     param(
-        [parameter(mandatory = $true)][string]$RefreshDatabase,
-        [parameter(mandatory = $true)][string]$RefreshSource,
-        [parameter(mandatory = $true)][string[]]$DestSqlInstances,
-        [parameter(mandatory = $true)][string]$Endpoint,
-        [parameter(mandatory = $false)][int]$PollJobInterval,
-        [parameter(mandatory = $false)][switch]$PromptForSnapshot,
-        [parameter(mandatory = $false)][switch]$RefreshFromSnapshot,
-        [parameter(mandatory = $false)][switch]$NoPsRemoting,
-        [parameter(mandatory = $false)][switch]$ApplyDataMasks,
-        [parameter(mandatory = $false)][switch]$ForceDestDbOffline,
-        [parameter(mandatory = $false)][string]$StaticDataMaskFile
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DatabaseName,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Snapshot')]
+        [ValidateNotNullOrEmpty()]
+        [Alias('Snapshot')]
+        [string]$SourceSnapshotName,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Volume')]
+        [ValidateNotNullOrEmpty()]
+        [Alias('Volume')]
+        [string]$SourceVolumeName,
+        [Parameter(Mandatory = $true, ParameterSetName = 'Database')]
+        [ValidateNotNull()]
+        [DbaInstanceParameter]$SourceSqlInstance,
+        [Parameter(ParameterSetName = 'Volume')]
+        [Parameter(ParameterSetName = 'Database')]
+        [switch]$PromptForSnapshot,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [DbaInstanceParameter[]]$SqlInstance,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Endpoint,
+        [switch]$ForceOffline,
+        [switch]$ApplyDataMask,
+        [string]$StaticDataMaskFile,
+        [int]$JobPollInterval = 1,
+        [pscredential]$Credential = (Get-PfaCredential)
     )
 
-    $StartMs = Get-Date
-
-    Get-Sdk1Module
-    Get-DbaToolsModule
-
-    if ( $PromptForSnapshot.IsPresent.Equals($false) -And $RefreshFromSnapshot.IsPresent.Equals($false) ) {
-        try {
-            $SourceDb = Get-DbaDatabase -SqlInstance $RefreshSource -Database $RefreshDatabase
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to source database $RefreshSource.$Database with: $ExceptionMessage"
-            Return
-        }
-
-        Write-Color -Text "Source SQL Server instance: ", $RefreshSource, " - CONNECTED" -Color Yellow, Green, Green
-
-        try {
-            $SourceServer = (Connect-DbaInstance -SqlInstance $RefreshSource).ComputerNamePhysicalNetBIOS
-        }
-        catch {
-            Write-Error "Failed to determine target server name with: $ExceptionMessage"
-        }
-    }
-    # Connect to FlashArray
-    if (!($Creds)) {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
+    trap {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to $goal. $exceptionMessage"
+        return
     }
 
-    Write-Color -Text "FlashArray endpoint       : ", "CONNECTED" -ForegroundColor Yellow, Green
+    $ErrorActionPreference = 'Stop'
 
-    $GetDbDisk = { param ( $Db )
-        $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
-        return $DbDisk
-    }
+    $s = [int][math]::Floor([console]::WindowWidth / 3)
+    $x = [console]::WindowWidth - $s
+    $start = Get-Date
 
-    $Snapshots = $(Get-PfaAllVolumeSnapshots $FlashArray)
-    $FilteredSnapshots = $Snapshots.where( { ([string]$_.Source) -eq $RefreshSource })
+    $goal = "connect to FlashArray endpoint $Endpoint"
+    $flashArray = Connect-Pfa2Array -Endpoint $Endpoint -Credential $Credential -IgnoreCertificateError
+    try {
+        Write-Color "FlashArray endpoint $Endpoint".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
 
-    if ( $PromptForSnapshot.IsPresent ) {
-        Write-Host ' '
-        for ($i = 0; $i -lt $FilteredSnapshots.Count; $i++) {
-            Write-Host 'Snapshot ' $i.ToString()
-            $FilteredSnapshots[$i]
-        }
+        if ($PSCmdlet.ParameterSetName -in 'Database', 'Volume') {
+            if ($PSCmdlet.ParameterSetName -eq 'Database') {
+                $goal = "connect to source SQL Server $SourceSqlInstance"
+                $instance = Connect-DbaInstance -SqlInstance $SourceSqlInstance
+                try {
+                    Write-Color "Source SQL Server instance $instance".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
 
-        $SnapshotId = Read-Host -Prompt 'Enter the number of the snapshot to be used for the database refresh'
-    }
-    elseif ( $RefreshFromSnapshot.IsPresent.Equals( $false ) ) {
-        try {
-            if ( $NoPsRemoting.IsPresent ) {
-                $SourceDisk = Invoke-Command -ScriptBlock $GetDbDisk -ArgumentList $SourceDb
+                    $goal = "connect to source database $DatabaseName"
+                    $database = Get-DbaDatabase -SqlInstance $instance -Database $DatabaseName
+
+                    if ($null -eq $database) {
+                        throw 'Database not found.'
+                    }
+
+                    $goal = 'connect to source server'
+                    $sp = @{}
+                    if (-not $SourceSqlInstance.IsLocalHost) {
+                        $sp.Add('ComputerName', $SourceSqlInstance.ComputerName)
+                    }
+                    $cimSession = New-CimSession @sp
+                    try {
+                        Write-Color "Source server $($cimSession.ComputerName)".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
+
+                        $goal = 'get source disk'
+                        $v = Get-Volume -FilePath $database.PrimaryFilePath -CimSession $cimSession
+                        $disk = $v | Get-Partition -CimSession $cimSession | Get-Disk -CimSession $cimSession
+                    }
+                    finally {
+                         Remove-CimSession $cimSession
+                    }
+
+                    $goal = 'get source volume'
+                    $sn = $disk.SerialNumber
+                    $source = Get-Pfa2Volume -Array $flashArray -Filter "serial='$sn'" -Limit 1
+
+                    if (-not $source) {
+                        throw 'Source volume not found.'
+                    }
+                }
+                finally {
+                    $instance | Disconnect-DbaInstance | Out-Null
+                }
             }
             else {
-                $SourceDisk = Invoke-Command -ComputerName $SourceServer -ScriptBlock $GetDbDisk -ArgumentList $SourceDb
+                $goal = 'get source volume'
+                $source = Get-Pfa2Volume -Array $flashArray -Name $SourceVolumeName
+            }
+
+            if ($PromptForSnapshot) {
+                $goal = 'get source volume snapshot'
+                $snapshots = Get-Pfa2VolumeSnapshot -Array $flashArray -SourceNames $source.name | foreach { $i = 1 } { [pscustomobject]@{'Number' = $i++; 'Name' = $_.name; 'Created' = $_.created } }
+
+                if ($snapshots) {
+                    $snapshots | Format-Table
+                    [int]$num = Read-Host -Prompt 'Select snapshot number'
+                    if ($num -gt 0) {
+                        $snap = $snapshots[$num - 1]
+                    }
+                }
+                if (-not $snap) {
+                    throw 'No snapshot found\selected.'
+                }
+                $source = $snap
             }
         }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to determine source disk with: $ExceptionMessage"
-            Return
+        else {
+            $goal = 'get source snapshot'
+            $source = Get-Pfa2VolumeSnapshot -Array $flashArray -Name $SourceSnapshotName
         }
 
-        try {
-            $SourceVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $SourceDisk.SerialNumber } | Select-Object name
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to determine source volume with: $ExceptionMessage"
-            Return
-        }
+        Write-Color "Get source $($source.name)".PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
+    }
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 
-    if ( $PromptForSnapshot.IsPresent ) {
-        Foreach ($DestSqlInstance in $DestSqlInstances) {
-            Invoke-DbRefresh -DestSqlInstance $DestSqlInstance `
-                -RefreshDatabase $RefreshDatabase `
-                -Endpoint     $Endpoint     `
-                -Creds  $Creds  `
-                -SourceVolume    $FilteredSnapshots[$SnapshotId]
-        }
+    $init = [scriptblock]::Create('function Write-Color {' + ${function:Write-Color} + "}`n`nImport-Module dbatools")
+
+    $goal = 'start background job'
+    $jobs = foreach ($di in $SqlInstance) {
+        Start-Job -InitializationScript $init -ScriptBlock $function:CoreDbRefresh -ArgumentList $di.FullName, `
+            $DatabaseName, `
+            $Endpoint, `
+            $Credential, `
+            $source.name, `
+            $ForceOffline.IsPresent, `
+            $ApplyDataMask.IsPresent, `
+            $StaticDataMaskFile, `
+            $s, $x
     }
-    else {
-        $JobNumber = 1
-        Foreach ($DestSqlInstance in $DestSqlInstances) {
-            $JobName = "DbRefresh" + $JobNumber
-            Write-Color -Text "Refresh background job    : ", $JobName, " - ", "PROCESSING" -Color Yellow, Green, Green, Green
-            If ( $RefreshFromSnapshot.IsPresent ) {
-                Start-Job -Name $JobName -ScriptBlock $Function:DbRefresh -ArgumentList $DestSqlInstance   , `
-                    $RefreshDatabase   , `
-                    $Endpoint       , `
-                    $Creds    , `
-                    $RefreshSource     , `
-                    $StaticDataMaskFile, `
-                    $ForceDestDbOffline.IsPresent, `
-                    $NoPsRemoting.IsPresent      , `
-                    $PromptForSnapshot.IsPresent , `
-                    $ApplyDataMasks.IsPresent | Out-Null
-            }
-            else {
-                Start-Job -Name $JobName -ScriptBlock $Function:DbRefresh -ArgumentList $DestSqlInstance   , `
-                    $RefreshDatabase   , `
-                    $Endpoint       , `
-                    $Creds    , `
-                    $SourceVolume.Name , `
-                    $StaticDataMaskFile, `
-                    $ForceDestDbOffline.IsPresent, `
-                    $NoPsRemoting.IsPresent      , `
-                    $PromptForSnapshot.IsPresent , `
-                    $ApplyDataMasks.IsPresent | Out-Null
-            }
-            $JobNumber += 1;
-        }
+    Write-Color "Background job ($($jobs.Count))".PadRight($x), 'PROCESSING'.PadLeft($s) -ForegroundColor Yellow, Green
 
-        While (Get-Job -State Running | Where-Object { $_.Name.Contains("DbRefresh") }) {
-            if ($PSBoundParameters.ContainsKey('PollJobInterval')) {
-                Get-Job -State Running | Where-Object { $_.Name.Contains("DbRefresh") } | Receive-Job
-                Start-Sleep -Seconds $PollJobInterval
-            }
-            else {
-                Start-Sleep -Seconds 1
-            }
-        }
-
-        Write-Color -Text "Refresh background jobs   : ", "COMPLETED" -Color Yellow, Green
-
-        foreach ($job in (Get-Job | Where-Object { $_.Name.Contains("DbRefresh") })) {
-            $result = Receive-Job $job
-            Write-Host $result
-        }
-
-        Remove-Job -State Completed
+    $goal = 'process background job'
+    $running = $jobs | where State -eq 'Running'
+    while ($running) {
+        $running | Receive-Job -ea Continue
+        Start-Sleep $JobPollInterval
+        $running = $jobs | where State -eq 'Running'
     }
 
-    $EndMs = Get-Date
-    Write-Host " "
-    Write-Host "-------------------------------------------------------"         -ForegroundColor Green
-    Write-Host " "
-    Write-Host "D A T A B A S E      R E F R E S H      C O M P L E T E"         -ForegroundColor Green
-    Write-Host " "
-    Write-Host "              Duration (s) = " ($EndMs - $StartMs).TotalSeconds  -ForegroundColor White
-    Write-Host " "
-    Write-Host "-------------------------------------------------------"         -ForegroundColor Green
+    $goal = 'clear background job'
+    $jobs | Receive-Job -ea Continue
+    $jobs | Remove-Job
+
+    Write-Color "Background job ($($jobs.Count))".PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
+
+    Write-Host ' '
+    Write-Host '-------------------------------------------------------'           -ForegroundColor Green
+    Write-Host ' '
+    Write-Host 'D A T A B A S E      R E F R E S H      C O M P L E T E'           -ForegroundColor Green
+    Write-Host ' '
+    Write-Host '              Duration (s) = ' ((Get-Date) - $start).TotalSeconds  -ForegroundColor White
+    Write-Host ' '
+    Write-Host '-------------------------------------------------------'           -ForegroundColor Green
 }
-function DbRefresh {
+
+function CoreDbRefresh {
     param(
-        [parameter(mandatory = $true)][string]$DestSqlInstance,
-        [parameter(mandatory = $true)][string]$RefreshDatabase,
-        [parameter(mandatory = $true)][string]$Endpoint,
-        [parameter(mandatory = $true)][string]$SourceVolume,
-        [parameter(mandatory = $false)][string]$StaticDataMaskFile,
-        [parameter(mandatory = $false)][bool]$ForceDestDbOffline,
-        [parameter(mandatory = $false)][bool]$NoPsRemoting,
-        [parameter(mandatory = $false)][bool]$PromptForSnapshot,
-        [parameter(mandatory = $false)][bool]$ApplyDataMasks
+        [DbaInstanceParameter]$sqlInstance,
+        [string]$databaseName,
+        [string]$endpoint,
+        [pscredential]$credential,
+        [string]$source,
+        [bool]$forceOffline,
+        [bool]$applyDataMask,
+        [string]$staticDataMaskFile,
+        [int]$s, 
+        [int]$x
     )
 
-    # Connect to FlashArray
-    if (!($Creds)) {
+    trap {
+        $exceptionMessage = $_.Exception.Message
+        Write-Error "Failed to $goal. $exceptionMessage"
+        return
+    }
+
+    $ErrorActionPreference = 'Stop'
+
+    $goal = "connect to FlashArray endpoint $endpoint"
+    $flashArray = Connect-Pfa2Array -Endpoint $endpoint -Credential $Credential -IgnoreCertificateError
+    try {
+        Write-Color "FlashArray endpoint $endpoint".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
+
+        $goal = "connect to destination SQL Server $sqlInstance"
+        $instance = Connect-DbaInstance -SqlInstance $sqlInstance
         try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials (Get-Credential) -IgnoreCertificateError
+            Write-Color "Destination SQL Server instance $instance".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
+
+            $goal = "connect to destination database $databaseName"
+            $database = Get-DbaDatabase -SqlInstance $instance -Database $databaseName
+
+            if ($null -eq $database) {
+                throw 'Database not found.'
+            }
+
+            $goal = 'connect to destination server'
+            $sp = @{}
+            if (-not $sqlInstance.IsLocalHost) {
+                $sp.Add('ComputerName', $sqlInstance.ComputerName)
+            }
+            $cimSession = New-CimSession @sp
+            try {
+                Write-Color "Destination server $($cimSession.ComputerName)".PadRight($x), 'CONNECTED'.PadLeft($s) -ForegroundColor Yellow, Green
+
+                $goal = 'get destination disk'
+                $v = Get-Volume -FilePath $database.PrimaryFilePath -CimSession $cimSession
+                $disk = $v | Get-Partition -CimSession $cimSession | Get-Disk -CimSession $cimSession
+
+                $goal = 'get destination volume'
+                $sn = $disk.SerialNumber
+                $volume = Get-Pfa2Volume -Array $flashArray -Filter "serial='$sn'" -Limit 1
+
+                if (-not $volume) {
+                    throw 'Volume not found.'
+                }
+
+                $goal = "offline destination database"
+                if ($forceOffline) {
+                    $database | Invoke-DbaQuery -Query "ALTER DATABASE [$databaseName] SET OFFLINE WITH ROLLBACK IMMEDIATE"
+                    $dff = ' (force)'
+                }
+                else {
+                    $database.SetOffline()
+                }
+
+                try {
+                    Write-Color ('Destination database' + $dff).PadRight($x), 'OFFLINE'.PadLeft($s) -ForegroundColor Yellow, Green
+
+                    $goal = 'offline destination disk'
+                    $disk | Set-Disk -IsOffline $true -CimSession $cimSession
+                    try {
+                        Write-Color 'Destination disk'.PadRight($x), 'OFFLINE'.PadLeft($s) -ForegroundColor Yellow, Green
+
+                        $start = Get-Date
+
+                        $goal = 'overwrite volume'
+                        New-Pfa2Volume -Array $flashArray -Name $volume.name -SourceName $source -Overwrite $true | Out-Null
+
+                        Write-Color "Volume overwrite ($(((Get-Date) - $start).TotalSeconds) sec.)".PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
+                    }
+                    finally {
+                        $goal = 'online destination disk'
+                        $disk | Set-Disk -IsOffline $false -CimSession $cimSession
+                        Set-Volume -DriveLetter $v.DriveLetter -NewFileSystemLabel $v.FileSystemLabel -CimSession $cimSession
+
+                        Write-Color 'Destination disk'.PadRight($x), 'ONLINE'.PadLeft($s) -ForegroundColor Yellow, Green
+                    }
+                }
+                finally {      
+                    $goal = "online destination database"
+                    $database.SetOnline()
+
+                    Write-Color 'Destination database'.PadRight($x), 'ONLINE'.PadLeft($s) -ForegroundColor Yellow, Green
+                }
+            }
+            finally {
+                 Remove-CimSession $cimSession
+            }
         }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-    else {
-        try {
-            $FlashArray = New-PfaArray -EndPoint $EndPoint -Credentials $Creds -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
-        }
-    }
-
-    try {
-        $DestDb = Get-DbaDatabase -SqlInstance $DestSqlInstance -Database $RefreshDatabase
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to connect to destination database $DestSqlInstance.$Database with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Host " "
-    Write-Color -Text "Target SQL Server instance: ", $DestSqlInstance, "- CONNECTED" -ForegroundColor Yellow, Green, Green
-
-    try {
-        $TargetServer = (Connect-DbaInstance -SqlInstance $DestSqlInstance).ComputerNamePhysicalNetBIOS
-    }
-    catch {
-        Write-Error "Failed to determine target server name with: $ExceptionMessage"
-    }
-
-    Write-Color -Text "Target SQL Server host    : ", $TargetServer -ForegroundColor Yellow, Green
-
-    $GetDbDisk = { param ( $Db )
-        $DbDisk = Get-Partition -DriveLetter $Db.PrimaryFilePath.Split(':')[0] | Get-Disk
-        return $DbDisk
-    }
-
-    $GetVolumeLabel = { param ( $Db )
-        Write-Verbose "Target database drive letter = $Db.PrimaryFilePath.Split(':')[0]"
-        $VolumeLabel = $(Get-Volume -DriveLetter $Db.PrimaryFilePath.Split(':')[0]).FileSystemLabel
-        Write-Verbose "Target database windows volume label = <$VolumeLabel>"
-        return $VolumeLabel
-    }
-
-    try {
-        if ( $NoPsRemoting ) {
-            $DestDisk = Invoke-Command -ScriptBlock $GetDbDisk -ArgumentList $DestDb
-            $DestVolumeLabel = Invoke-Command -ScriptBlock $GetVolumeLabel -ArgumentList $DestDb
-        }
-        else {
-            $DestDisk = Invoke-Command -ComputerName $TargetServer -ScriptBlock $GetDbDisk -ArgumentList $DestDb
-            $DestVolumeLabel = Invoke-Command -ComputerName $TargetServer -ScriptBlock $GetVolumeLabel -ArgumentList $DestDb
-        }
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine destination database disk with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Color -Text "Target drive letter       : ", $DestDb.PrimaryFilePath.Split(':')[0] -ForegroundColor Yellow, Green
-
-    try {
-        $DestVolume = Get-PfaVolumes -Array $FlashArray | Where-Object { $_.serial -eq $DestDisk.SerialNumber } | Select-Object name
-
-        if (!$DestVolume) {
-            throw "Failed to determine destination FlashArray volume, check that source and destination volumes are on the SAME array"
-        }
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to determine destination FlashArray volume with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Color -Text "Target Pfa volume         : ", $DestVolume.name -ForegroundColor Yellow, Green
-
-    $OfflineDestDisk = { param ( $DiskNumber, $Status )
-        Set-Disk -Number $DiskNumber -IsOffline $Status
-    }
-
-    try {
-        if ( $ForceDestDbOffline ) {
-            $ForceDatabaseOffline = "ALTER DATABASE [$RefreshDatabase] SET OFFLINE WITH ROLLBACK IMMEDIATE"
-            Invoke-DbaQuery -ServerInstance $DestSqlInstance -Database $RefreshDatabase -Query $ForceDatabaseOffline
-        }
-        else {
-            $DestDb.SetOffline()
+        finally {
+            $instance | Disconnect-DbaInstance | Out-Null
         }
     }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to offline database $Database with: $ExceptionMessage"
-        Return
+    finally {
+        Disconnect-Pfa2Array -Array $flashArray
     }
 
-    Write-Color -Text "Target database           : ", "OFFLINE" -ForegroundColor Yellow, Green
+    if ($applyDataMask) {
+        $goal = "apply dynamic data masking to $databaseName"
+        Invoke-DynamicDataMasking -SqlInstance $instance -Database $databaseName | Out-Null
 
-    try {
-        if ( $NoPsRemoting ) {
-            Invoke-Command -ScriptBlock $OfflineDestDisk -ArgumentList $DestDisk.Number, $True
-        }
-        else {
-            Invoke-Command -ComputerName $TargetServer -ScriptBlock $OfflineDestDisk -ArgumentList $DestDisk.Number, $True
-        }
+        Write-Color 'Dynamic data masking'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
     }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to offline disk with : $ExceptionMessage"
-        Return
+    elseif ($staticDataMaskFile) {
+        $goal = "apply static data masking to $databaseName"
+        Invoke-StaticDataMasking -SqlInstance $instance -Database $databaseName -DataMaskFile $staticDataMaskFile | Out-Null
+
+        Write-Color 'Static data masking'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
     }
 
-    Write-Color -Text "Target windows disk       : ", "OFFLINE" -ForegroundColor Yellow, Green
+    $goal = 'repair orphaned users'
+    Repair-DbaDbOrphanUser -SqlInstance $instance -Database $database | Out-Null
 
-    $StartCopyVolMs = Get-Date
-
-    try {
-        Write-Color -Text "Source Pfa volume         : ", $SourceVolume -ForegroundColor Yellow, Green
-        New-PfaVolume -Array $FlashArray -VolumeName $DestVolume.name -Source $SourceVolume -Overwrite
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to refresh test database volume with : $ExceptionMessage"
-        Set-Disk -Number $DestDisk.Number -IsOffline $False
-        $DestDb.SetOnline()
-        Return
-    }
-
-    Write-Color -Text "Volume overwrite          : ", "SUCCESSFUL" -ForegroundColor Yellow, Green
-    $EndCopyVolMs = Get-Date
-    Write-Color -Text "Overwrite duration (ms)   : ", ($EndCopyVolMs - $StartCopyVolMs).TotalMilliseconds -Color Yellow, Green
-
-    $SetVolumeLabel = { param ( $Db, $DestVolumeLabel )
-        Set-Volume -DriveLetter $Db.PrimaryFilePath.Split(':')[0] -NewFileSystemLabel $DestVolumeLabel
-    }
-
-    try {
-        if ( $NoPsRemoting ) {
-            Invoke-Command -ScriptBlock $OfflineDestDisk -ArgumentList $DestDisk.Number, $False
-            Invoke-Command -ScriptBlock $SetVolumeLabel -ArgumentList $DestDb, $DestVolumeLabel
-        }
-        else {
-            Invoke-Command -ComputerName $TargetServer -ScriptBlock $OfflineDestDisk -ArgumentList $DestDisk.Number, $False
-            Invoke-Command -ComputerName $TargetServer -ScriptBlock $SetVolumeLabel -ArgumentList $DestDb, $DestVolumeLabel
-        }
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to online disk with : $ExceptionMessage"
-        Return
-    }
-
-    Write-Color -Text "Target windows disk       : ", "ONLINE" -ForegroundColor Yellow, Green
-
-    try {
-        $DestDb.SetOnline()
-    }
-    catch {
-        $ExceptionMessage = $_.Exception.Message
-        Write-Error "Failed to online database $Database with: $ExceptionMessage"
-        Return
-    }
-
-    Write-Color -Text "Target database           : ", "ONLINE" -ForegroundColor Yellow, Green
-
-    if ( $ApplyDataMasks ) {
-        Write-Host "Applying SQL Server dynamic data masks to $RefreshDatabase on SQL Server instance $DestSqlInstance" -ForegroundColor Yellow
-
-        try {
-            Invoke-DynamicDataMasking -SqlInstance $DestSqlInstance -Database $RefreshDatabase
-            Write-Host "SQL Server dynamic data masking has been applied" -ForegroundColor Yellow
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to apply SQL Server dynamic data masks to $Database on $DestSqlInstance with: $ExceptionMessage"
-            Return
-        }
-    }
-    elseif ([System.IO.File]::Exists($StaticDataMaskFile)) {
-        Write-Color -Text "Static data mask target   : ", $DestSqlInstance, " - ", $RefreshDatabase -Color Yellow, Green, Green, Green
-
-        try {
-            Invoke-StaticDataMasking -SqlInstance $DestSqlInstance -Database $RefreshDatabase -DataMaskFile $StaticDataMaskFile
-            Write-Color -Text "Static data masking       : ", "APPLIED" -ForegroundColor Yellow, Green
-
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to apply static data masking to $Database on $DestSqlInstance with: $ExceptionMessage"
-            Return
-        }
-    }
-
-    Repair-DbaDbOrphanUser -SqlInstance $DestSqlInstance -Database $RefreshDatabase | Out-Null
-    Write-Color -Text "Orphaned users            : ", "REPAIRED" -ForegroundColor Yellow, Green
+    Write-Color 'Repair orphaned users'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
 }
 
 function Invoke-StaticDataMasking {
@@ -1030,7 +929,7 @@ Note that it has dependencies on the dbatools module which are installed with th
                     "ABS(CHECKSUM(NEWID()))"
                 }
                 default {
-                    Write-Error "$($column.ColumnType) is not supported, please remove the column $($column.Name) from the $($table.Name) table"
+                    Write-Error "$($column.ColumnType) is not supported, please remove the column $($column.Name) from the $($tabletest.Name) table"
                 }
             }
             
