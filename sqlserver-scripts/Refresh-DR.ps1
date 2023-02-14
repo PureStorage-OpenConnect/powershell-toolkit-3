@@ -4,12 +4,9 @@
 $TargetVMSession = New-PSSession -ComputerName 'MyVirtualMachineName'
 
 try {
-
-    Import-Module SQLPS -PSSession $TargetVMSession -DisableNameChecking
-
     Invoke-Command -Session $TargetVMSession -ScriptBlock {
         $diskSerialNumbers = @('423F93C2ECF544580001103B')
-        $databaseName = My_DR_Database
+        $databaseName = 'My_DR_Database'
         $serverInstance = '.'
 
         # Offline the database
@@ -18,13 +15,13 @@ try {
 
         # Offline the volume
         Write-Host "Offlining the DR volume..." -ForegroundColor Red
-        Get-Disk | where { $_.SerialNumber -in $diskSerialNumbers } | Set-Disk -IsOffline $True
+        Get-Disk | ? SerialNumber -in $diskSerialNumbers | Set-Disk -IsOffline $True
     }
 
     $connectionParams = @{
         # THIS IS A SAMPLE SCRIPT WE USE FOR DEMOS! _PLEASE_ do not save your password in cleartext here. 
         # Use NTFS secured, encrypted files or whatever else -- never cleartext!
-        EndPoint = 10.128.0.2
+        EndPoint = '10.128.0.2'
         Username = 'myusername'
         Password = ConvertTo-SecureString -String 'mypassword' -AsPlainText -Force
     }
@@ -52,7 +49,7 @@ try {
 
         # Perform the DR volume overwrite
         $volumeParams = @{
-            VolumeName = 'MyVirtualMachineName-data-volume'
+            Name = 'MyVirtualMachineName-data-volume'
             SourceName = $mostRecentSnapName + '.MyProduction-data-volume'
         }
 
@@ -60,13 +57,13 @@ try {
         New-Pfa2Volume @volumeParams -Overwrite $true -Array $flashArray
     }
     finally {
-        Disconnect-Pfa2Array $flashArray
+        Disconnect-Pfa2Array -Array $flashArray
     }
 
     Invoke-Command -Session $TargetVMSession -ScriptBlock { 
         # Online the volume
         Write-Host "Onlining the volume..." -ForegroundColor Red
-        Get-Disk | where { $_.SerialNumber -in $diskSerialNumbers } | Set-Disk -IsOffline $False 
+        Get-Disk | ? SerialNumber -in $diskSerialNumbers | Set-Disk -IsOffline $False 
 
         # Online the database
         Write-Host "Onlining the database..." -ForegroundColor Red
