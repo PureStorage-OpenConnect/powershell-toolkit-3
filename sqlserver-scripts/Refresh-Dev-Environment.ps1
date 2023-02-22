@@ -7,9 +7,6 @@
 $TargetVMSession = New-PSSession -ComputerName 'MyVirtualMachineName'
 
 try {
-
-    Import-Module SQLPS -PSSession $TargetVMSession -DisableNameChecking
-
     Write-Host "Actual development instance downtime begins now." -ForegroundColor Red
 
     Invoke-Command -Session $TargetVMSession -ScriptBlock {
@@ -32,7 +29,7 @@ try {
     Write-Host "Establishing a session against the Pure Storage FlashArray..." -ForegroundColor Red
 
     $connectionParams = @{
-        EndPoint = 10.128.0.2
+        EndPoint = '10.128.0.2'
         Username = 'myusername'
     
         # THIS IS A SAMPLE SCRIPT WE USE FOR DEMOS! _PLEASE_ do not save your password in cleartext here. 
@@ -48,7 +45,7 @@ try {
         Write-Host "Overwriting the dev instance's volume with a fresh copy from production..." -ForegroundColor Red
 
         $newVolumeParams = @{
-            VolumeName = 'MyVirtualMachineName-data-volume'
+            Name = 'MyVirtualMachineName-data-volume'
             SourceName = 'MyProduction-data-volume'
         }
 
@@ -56,7 +53,7 @@ try {
 
     }
     finally {
-        Disconnect-Pfa2Array $FlashArray
+        Disconnect-Pfa2Array -Array $FlashArray
     }
 
     Invoke-Command -Session $TargetVMSession -ScriptBlock {
