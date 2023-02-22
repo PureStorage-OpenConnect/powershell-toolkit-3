@@ -24,231 +24,19 @@
 
 #region Helper functions
 
-function Convert-Size {
-    <#
-    .SYNOPSIS
-    Converts volume sizes from B to MB, MB, GB, TB.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle conversions.
-    .INPUTS
-    ConvertFrom (Mandatory)
-    ConvertTo (Mandatory)
-    Value (Mandatory)
-    Precision (Optional)
-    .OUTPUTS
-    Converted size of volume.
-    #>
-
+function Convert-UnitOfSize {
     [CmdletBinding()]
-    Param (
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertFrom,
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertTo,
-        [Parameter(Mandatory = $true)][Double]$Value,
-        [Parameter(Mandatory = $false)][Int]$Precision = 4
-    )
-
-    switch ($ConvertFrom) {
-        "Bytes" { $value = $Value }
-        "KB" { $value = $Value * 1024 }
-        "MB" { $value = $Value * 1024 * 1024 }
-        "GB" { $value = $Value * 1024 * 1024 * 1024 }
-        "TB" { $value = $Value * 1024 * 1024 * 1024 * 1024 }
-    }
-
-    switch ($ConvertTo) {
-        "Bytes" { return $value }
-        "KB" { $Value = $Value / 1KB }
-        "MB" { $Value = $Value / 1MB }
-        "GB" { $Value = $Value / 1GB }
-        "TB" { $Value = $Value / 1TB }
-    }
-
-    return [Math]::Round($Value, $Precision, [MidPointRounding]::AwayFromZero)
-}
-
-function ConvertTo-Base64() {
-<#
-    .SYNOPSIS
-	Converts source file to Base64.
-    .DESCRIPTION
-	Helper function
-	Supporting function to handle conversions.
-    .INPUTS
-	Source (Mandatory)
-    .OUTPUTS
-	Converted source.
-#>
-    Param (
-        [Parameter(Mandatory = $true)][String] $Source
-    )
-    return [Convert]::ToBase64String((Get-Content $Source -Encoding byte))
-}
-function Get-HypervStatus() {
-    <#
-    .SYNOPSIS
-	Confirms that the HyperV role is installed ont he server.
-    .DESCRIPTION
-	Helper function
-	Supporting function to ensure proper role is installed.
-    .OUTPUTS
-	Error on missing HyperV role.
-    #>
-    $hypervStatus = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V).State
-    if ($hypervStatus -ne "Enabled") {
-        Write-Host "Hyper-V is not running. This cmdlet must be run on a Hyper-V host."
-        break
-    }
-}
-function Set-PfaCredential {
-    <#
-    .SYNOPSIS
-    Sets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [CmdletBinding()]
-    [OutputType([void])]
-
     param (
-        [Parameter(Mandatory)]
-        [System.Management.Automation.Credential()]
-        [pscredential]$Credential
+        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Value,
+        $To = 1GB,
+        $From = 1,
+        $Decimals = 2
     )
 
-    $script:Creds = $Credential
-}
-
-function Get-PfaCredential {
-    <#
-    .SYNOPSIS
-    Gets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Credentials
-    #>
-    
-    [OutputType([pscredential])]
-
-    param ()
-
-    Set-PfaCredential $script:Creds
-    $script:Creds
-}
-
-function Clear-PfaCredential {
-    <#
-    .SYNOPSIS
-    Clears credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [OutputType([void])]
-
-    $script:Creds = $null
-}
-
-function Get-SdkModule() {
-    <#
-    .SYNOPSIS
-	Confirms that PureStoragePowerShellSDK version 2 module is loaded, present, or missing. If missing, it will download it and import. If internet access is not available, the function will error.
-    .DESCRIPTION
-	Helper function
-	Supporting function to load required module.
-    .OUTPUTS
-	PureStoragePowerShellSDK version 2 module.
-    #>
-
-    $m = "PureStoragePowerShellSDK2"
-    # If module is imported, continue
-    if (Get-Module | Where-Object { $_.Name -eq $m }) {
+    process {
+        return [math]::Round($Value * $From / $To, $Decimals)
     }
-    else {
-        # If module is not imported, but available on disk, then import
-        if (Get-InstalledModule | Where-Object { $_.Name -eq $m }) {
-            Import-Module $m -ErrorAction SilentlyContinue
-        }
-        else {
-            # If module is not imported, not available on disk, then install and import
-            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
-                Write-Warning "The $m module does not exist."
-                Write-Host "We will attempt to install the module from the PowerShell Gallery. Please wait..."
-                Install-Module -Name $m -Force -ErrorAction SilentlyContinue -Scope CurrentUser
-                Import-Module $m -ErrorAction SilentlyContinue
-            }
-            else {
-                # If module is not imported, not available on disk, and we cannot access it online, then abort
-                Write-Host "Module $m not imported, not available on disk, and we are not able to download it from the online gallery... Exiting."
-                EXIT 1
-            }
-        }
-    }
-}
-
-function New-FlashArrayReportPieChart() {
-<#
-    .SYNOPSIS
-	Creates graphic pie chart .png image file for use in report.
-    .DESCRIPTION
-	Helper function
-	Supporting function to create a pie chart.
-    .OUTPUTS
-	piechart.png.
-#>
-    Param (
-        [string]$FileName,
-        [float]$SnapshotSpace,
-        [float]$VolumeSpace,
-        [float]$CapacitySpace
-    )
-
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
-
-    $chart = New-Object System.Windows.Forms.DataVisualization.charting.chart
-    $chart.Width = 700
-    $chart.Height = 500
-    $chart.Left = 10
-    $chart.Top = 10
-
-    $chartArea = New-Object System.Windows.Forms.DataVisualization.charting.chartArea
-    $chart.chartAreas.Add($chartArea)
-    [void]$chart.Series.Add("Data")
-
-    $legend = New-Object system.Windows.Forms.DataVisualization.charting.Legend
-    $legend.Name = "Legend"
-    $legend.Font = "Verdana"
-    $legend.Alignment = "Center"
-    $legend.Docking = "top"
-    $legend.Bordercolor = "#FE5000"
-    $legend.Legendstyle = "row"
-    $chart.Legends.Add($legend)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $SnapshotSpace)
-    $datapoint.AxisLabel = "SnapShots " + "(" + $SnapshotSpace + " MB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $VolumeSpace)
-    $datapoint.AxisLabel = "Volumes " + "(" + $VolumeSpace + " GB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $chart.Series["Data"].chartType = [System.Windows.Forms.DataVisualization.charting.SerieschartType]::Doughnut
-    $chart.Series["Data"]["DoughnutLabelStyle"] = "Outside"
-    $chart.Series["Data"]["DoughnutLineColor"] = "#FE5000"
-
-    $Title = New-Object System.Windows.Forms.DataVisualization.charting.Title
-    $chart.Titles.Add($Title)
-    $chart.SaveImage($FileName + ".png", "png")
 }
 function Write-Color {
     [CmdletBinding()]
@@ -323,154 +111,254 @@ function Write-Color {
 
 #endregion Helper functions
 
-Function New-FlashArrayExcelReport {
+function New-FlashArrayExcelReport {
     <#
     .SYNOPSIS
-    Create an Excel workbook that contains FlashArray Information for each array specified in a file.
+    Create an Excel workbook that contains FlashArray Information for each endpoint specified.
     .DESCRIPTION
-    This cmdlet will retrieve array, volume, host, pod, and snapshot capacity information from all of the FlashArrays listed in the txt file and output it to an Excel spreadsheet. Each arrays will have it's own filename and the current date and time will be added to the filenames.
+    This cmdlet will retrieve array, volume, host, pod, and snapshot capacity information from all of the endpoints and output it to an Excel spreadsheet. Each FlashArray will have it's own filename and the current date and time will be added to the filenames.
     This cmdlet requires the PowerShell module ImportExcel - https://www.powershellgallery.com/packages/ImportExcel
-    .PARAMETER Username
-    Optional. Required if $Creds variable is not used.
-    Full username to login to the arrays. This currently must be the same username for all arrays. This user must have the array-admin role.
-    If not supplied, the $Creds variable must exist in the session and be set by Get-Credential.
-    .PARAMETER PassFilePath
-    Optional. Required if $Creds variable is not used.
-    Full path and filename that contains the plaintext password for the $username. The password will be encrypted when passing to the array.
-    If not supplied, the $Creds variable must exist in the session and be set by Get-Credential.
-    .PARAMETER ArrayList
-    Required. Full path to file name that contains IP addresses or FQDN's for all FlashAarays being reported on. This is a plain text file with each array on a new line.
+    .PARAMETER Endpoint
+    Required. An IP address or FQDN of the FlashArray. Multiple endpoints can be specified.
     .PARAMETER OutPath
-    Optional. Full directory path (with no trailing "\") for Excel workbook, formatted as DRIVE_LETTER:\folder_name. If not specified, the files will be placed in the %temp% folder.
-    .PARAMETER snapLimit
+    Optional. Directory path for Excel workbook. If not specified, the files will be placed in the %temp% folder.
+    .PARAMETER SnapLimit
     Optional. This will limit the total number of Volume snapshots returned from the arrays. This will be beneficial when working with a large number of snapshots. With a large number of snapshots, and not setting this limit, the worksheet creation time is increased considerably.
+    .PARAMETER Credential
+    Optional. Credential for the FlashArray.
     .INPUTS
     None
     .OUTPUTS
     An Excel workbook
     .EXAMPLE
-    New-FlashArrayExcelReport -Username "pureuser" -PassFilePath "c:\temp\creds.txt" -ArrayList "c:\temp\arrays.txt"
+    New-FlashArrayExcelReport -Endpoint 'myarray.mydomain.com'
 
-    Creates an Excel file in the the %temp% folder for each array in the Arrays.txt file, using the username and plaintext password file supplied.
+    Creates an Excel file in the %temp% folder for array myarray.mydomain.com.
 
     .EXAMPLE
-    $Creds = (Get-Credential)
-    New-FlashArrayExcelReport -ArrayList "c:\temp\arrays.txt" -snapLimit 25 -OutPath "c:\outputs"
+    New-FlashArrayExcelReport -Endpoint 'myarray01', 'myarray02' -OutPath '.\reports'
 
-    Creates an Excel file for each array in the Arrays.txt file, using the credentials preconfigured via the Get-Credentials cmdlet supplied.
+    Creates an Excel file for myarray01 and myarray02. Reports are located in the 'reports' folder.
+
+    .EXAMPLE
+    Get-Content '.\arrays.txt' | New-FlashArrayExcelReport -OutPath '.\reports'
+
+    Creates an Excel file for each array in the arrays.txt file. Reports are located in the 'reports' folder.
+
+    .EXAMPLE
+    New-FlashArrayExcelReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential) -OutPath '.\reports'
+
+    Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .EXAMPLE
+    $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
+    $endpoint | New-FlashArrayExcelReport -OutPath '.\reports'
+
+    Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
 
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
-    This cmdlet requires the PowerShell module ImportExcel.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][ValidateNotNullOrEmpty()][string] $Arraylist,
-        [Parameter(Mandatory = $False)][string] $OutPath = "$env:Temp",
-        [Parameter(Mandatory = $False)][string] $snapLimit,
-        [Parameter(Mandatory = $False)][string] $Username,
-        [Parameter(Mandatory = $False)][string] $PassFilePath
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Endpoint,
+        [int]$SnapLimit,
+        [string]$OutPath = $env:Temp,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-PfaCredential )
     )
 
-    # Check for Creds
-    if (!($Creds)) {
-        $pass = Get-Content -Path $PassFilePath | ConvertTo-SecureString -AsPlainText
-        $Creds = New-Object System.Management.Automation.PSCredential($username, $pass)
+    begin {
+        $date = (Get-Date).ToString('MMddyyyy_HHmmss')
     }
 
-    # Assign variables
-    $arrays = Get-Content -Path $arraylist
-    $date = (Get-Date).ToString('MMddyyyy_HHmmss')
-    # Run through each array
-    Write-Host 'Starting to read from array...' -ForegroundColor green
-    foreach ($array in $arrays) {
-        $flasharray = Connect-Pfa2Array -Endpoint $array -Credential $Creds -IgnoreCertificateError
-        $array_details = Get-Pfa2Array -Array $flasharray
-        $host_details = Get-Pfa2Host -Array $flasharray -Sort 'name'
-        $hostgroup = Get-Pfa2HostGroup -Array $flasharray
-        $vol_details = Get-Pfa2Volume -Array $flasharray -Sort 'name' -Filter "not(contains(name,'vvol'))"
-        $vvol_details = Get-Pfa2Volume -Array $flasharray -Sort 'name' -Filter "contains(name,'vvol')"
-        $pgd = Get-Pfa2ProtectionGroup -Array $flasharray
-        $pgst = Get-Pfa2ProtectionGroupSnapshotTransfer -Array $flasharray -Sort 'name'
-        $controller0_details = Get-Pfa2Controller -Array $flasharray | Where-Object Name -EQ CT0
-        $controller1_details = Get-Pfa2Controller -Array $flasharray | Where-Object Name -EQ CT1
-        $free = $array_details.capacity - $array_details.space.TotalPhysical
-        if ($PSBoundParameters.ContainsKey('snapLimit')) {
-            $snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray -Limit $snapLimit
-        }
-        else {
-            $snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray
-        }
-        $pods = Get-Pfa2Pod -Array $FlashArray
-        Write-Host 'Read complete. Disconnecting and continuing...' -ForegroundColor green
-        # Disconnect 'cause we don't need to waste the connection anymore
-        Disconnect-Pfa2Array -Array $flasharray
+    process {
+        # Run through each array
+        foreach ($e in $Endpoint) {
+            Write-Host "Starting to read from array $e ..." -ForegroundColor green
 
-        # Name and path the files
-        $wsname = $array_details.name
-        $excelFile = "$outPath\$wsname-$date.xlsx"
-        Write-Host 'Writing data to Excel workbook...' -ForegroundColor green
-        # Array Information
-        [PSCustomObject]@{
-            'Array Name'            = ($array_details.Name).ToUpper()
-            'Array ID'              = $array_details.Id
-            'Purity Version'        = $array_details.Version
-            'CT0-Mode'              = $controller0_details.Mode
-            'CT0-Status'            = $controller0_details.Status
-            'CT1-Mode'              = $controller1_details.Mode
-            'CT1-Status'            = $controller1_details.Status
-            '% Utilized'            = '{0:P}' -f ($array_details.space.TotalPhysical / $array_details.capacity )
-            'Total Capacity(TB)'    = [math]::round($array_details.Capacity / 1024 / 1024 / 1024 / 1024, 2)
-            'Used Capacity(TB)'     = [math]::round($array_details.space.TotalPhysical / 1024 / 1024 / 1024 / 1024, 2)
-            'Free Capacity(TB)'     = [math]::round($free / 1024 / 1024 / 1024 / 1024, 2)
-            'Provisioned Size(TB)'  = [math]::round($array_details.space.TotalProvisioned / 1024 / 1024 / 1024 / 1024, 2)
-            'Unique Data(TB)'       = [math]::round($array_details.space.Unique / 1024 / 1024 / 1024 / 1024, 2)
-            'Shared Data(TB)'       = [math]::round($array_details.space.shared / 1024 / 1024 / 1024 / 1024, 2)
-            'Snapshot Capacity(TB)' = [math]::round($array_details.space.snapshots / 1024 / 1024 / 1024 / 1024, 2)
-        } | Export-Excel $excelFile -WorksheetName 'Array_Info' -AutoSize -TableName 'ArrayInformation' -Title 'FlashArray Information'
+            # Connect to FlashArray(s)
+            try {
+                $flashArray = Connect-Pfa2Array -Endpoint $e -Credential $Credential -IgnoreCertificateError
+            }
+            catch {
+                $exceptionMessage = $_.Exception.Message
+                Write-Error "Failed to connect to FlashArray endpoint $e with: $exceptionMessage"
+                Return
+            }
 
-        ## Volume Details
-        $vol_details | Select-Object name, @{n = 'Size(GB)'; e = { [math]::round(($_.provisioned / 1024 / 1024 / 1024), 2) } }, @{n = 'Unique Data(GB)'; e = { [math]::round(($_.space.Unique / 1024 / 1024 / 1024), 2) } }, @{n = 'Shared Data(GB)'; e = { [math]::round(($_.space.Shared / 1024 / 1024 / 1024), 2) } }, serial, ConnectionCount, Created, @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } }, Destroyed, TimeRemaining | Export-Excel $excelFile -WorksheetName 'Volumes-No vVols' -AutoSize -ConditionalText $(New-ConditionalText Stop DarkRed LightPink) -TableName 'VolumesNovVols' -Title 'Volumes - Not including vVols'
-        ## vVol Volume Details
-        if ($vvol_details) {
-            $vvol_details | Select-Object name, @{n = 'Size(GB)'; e = { [math]::round(($_.provisioned / 1024 / 1024 / 1024), 2) } }, @{n = 'Unique Data(GB)'; e = { [math]::round(($_.space.Unique / 1024 / 1024 / 1024), 2) } }, @{n = 'Shared Data(GB)'; e = { [math]::round(($_.space.Shared / 1024 / 1024 / 1024), 2) } }, serial, ConnectionCount, Created, @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } }, Destroyed, TimeRemaining | Export-Excel $excelFile -WorksheetName 'vVol Volumes' -AutoSize -ConditionalText $(New-ConditionalText Stop DarkRed LightPink) -TableName 'vVolVolumes' -Title 'vVol Volumes'
-        }
-        else {
-            Write-Host 'No vVol Volumes exist on Array. Skipping.'
-        }
-        ## Volume Snapshot details
-        if ($snapshots) {
-            $snapshots | Select-Object Name, Created, @{n = 'Provisioned(GB)'; e = { [math]::round(($_.Provisioned / 1024 / 1024 / 1024), 2) } }, Destroyed, @{n = 'Source'; e = { $_.Source.Name } }, @{n = 'Pod'; e = { $_.pod.name } }, @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } } | Export-Excel $excelFile -WorksheetName 'Volume Snapshots' -AutoSize -TableName 'VolumeSnapshots' -Title 'Volume Snapshots'
-        }
-        else {
-            Write-Host 'No Volume Snapshots exist on Array. Skipping.'
-        }
-        # Host Details
-        $host_details | Select-Object Name, @{n = 'No. of Volumes'; e = { $_.ConnectionCount } }, @{n = 'HostGroup'; e = { $_.HostGroup.Name } }, Personality, @{n = 'Allocated(GB)'; e = { [math]::round(($_.space.totalprovisioned / 1024 / 1024 / 1024), 2) } }, @{n = 'Wwns'; e = { $_.Wwns -join ',' } } | Export-Excel $excelFile -WorksheetName 'Hosts' -AutoSize -TableName 'Hosts' -Title 'Host Information'
-        ## HostGroup Details
-        if ($hostgroup) {
-            $hostgroup | Select-Object Name, HostCount, @{n = 'No.of Volumes'; e = { $_.ConnectionCount } }, @{n = 'Total Size(GB)'; e = { [math]::round(($_.space.totalprovisioned / 1024 / 1024 / 1024), 2) } } | Export-Excel $excelFile -WorksheetName 'Host Groups' -AutoSize -TableName 'HostGroups' -Title 'Host Groups'
-        }
-        else {
-            Write-Host 'No Host Groups exist on Array. Skipping.'
-        }
-        ## Protection Group and Protection Group Transfer details
-        if ($pgd) {
-            $pgd | Select-Object Name, @{n = 'Snapshot Size(GB)'; e = { [math]::round(($_.space.snapshots / 1024 / 1024 / 1024), 2) } }, volumecount, @{n = 'Source'; e = { $_.source.name } } | Export-Excel $excelFile -WorksheetName 'Protection Groups' -AutoSize -TableName 'ProtectionGroups' -Title 'Protection Group'
-            $pgst | Select-Object Name, @{n = 'Data Transferred(MB)'; e = { [math]::round(($_.DataTransferred / 1024 / 1024), 2) } }, Destroyed, @{n = 'Physical Bytes Written(MB)'; e = { [math]::round(($_.PhysicalBytesWritten / 1024 / 1024), 2) } }, @{n = 'Status'; e = { $_.Progress -Replace ('1', 'Transfer Complete') } } | Export-Excel $excelFile -WorksheetName 'PG Snapshot Transfers' -AutoSize -TableName 'PGroupSnapshotTransfers' -Title 'Protection Group Snapshot Transfers'
-        }
-        else {
-            Write-Host 'No Protection Groups exist on Array. Skipping.'
-        }
-        ## Pod details
-        if ($pods) {
-            $pods | Select-Object Name, arraycount, @{n = 'Source'; e = { $_.source.name } }, mediator, promotionstatus, destroyed | Export-Excel $excelFile -WorksheetName 'Pods' -AutoSize -TableName 'Pods' -Title 'Pod Information'
-        }
-        else {
-            Write-Host 'No Pods exist on Array. Skipping.'
+            try {
+                $array_details = Get-Pfa2Array -Array $flasharray
+                $host_details = Get-Pfa2Host -Array $flasharray -Sort 'name'
+                $hostgroup = Get-Pfa2HostGroup -Array $flasharray
+                $volumes = Get-Pfa2Volume -Array $flasharray -Sort 'name'
+                $pgd = Get-Pfa2ProtectionGroup -Array $flasharray
+                $pgst = Get-Pfa2ProtectionGroupSnapshotTransfer -Array $flasharray -Sort 'name'
+                $controllers = Get-Pfa2Controller -Array $flasharray
+                $controller0_details = $controllers | Where-Object Name -eq 'CT0'
+                $controller1_details = $controllers | Where-Object Name -eq 'CT1'
+                $free = $array_details.capacity - $array_details.space.TotalPhysical
+                $lim = @{}
+                if ($PSBoundParameters.ContainsKey('SnapLimit')) {
+                    $lim.Add('Limit', $SnapLimit)
+                }
+                $snapshots = Get-Pfa2VolumeSnapshot -Array $flashArray @lim
+                $pods = Get-Pfa2Pod -Array $flashArray
+            
+                Write-Host 'Read complete. Disconnecting and continuing...' -ForegroundColor green
+            }
+            finally {
+                # Disconnect 'cause we don't need to waste the connection anymore
+                Disconnect-Pfa2Array -Array $flasharray
+            }
+
+            # Name and path the files
+            $excelFile = Join-Path $OutPath "$($array_details.name)-$date.xlsx"
+            Write-Host 'Writing data to Excel workbook...' -ForegroundColor green
+            
+            # Array Information
+            [PSCustomObject]@{
+                'Array Name'            = ($array_details.Name).ToUpper()
+                'Array ID'              = $array_details.Id
+                'Purity Version'        = $array_details.Version
+                'CT0-Mode'              = $controller0_details.Mode
+                'CT0-Status'            = $controller0_details.Status
+                'CT1-Mode'              = $controller1_details.Mode
+                'CT1-Status'            = $controller1_details.Status
+                '% Utilized'            = '{0:P}' -f ($array_details.space.TotalPhysical / $array_details.capacity)
+                'Total Capacity(TB)'    = Convert-UnitOfSize $array_details.Capacity -To 1TB
+                'Used Capacity(TB)'     = Convert-UnitOfSize $array_details.space.TotalPhysical -To 1TB
+                'Free Capacity(TB)'     = Convert-UnitOfSize $free -To 1TB
+                'Provisioned Size(TB)'  = Convert-UnitOfSize $array_details.space.TotalProvisioned -To 1TB
+                'Unique Data(TB)'       = Convert-UnitOfSize $array_details.space.Unique -To 1TB
+                'Shared Data(TB)'       = Convert-UnitOfSize $array_details.space.shared -To 1TB
+                'Snapshot Capacity(TB)' = Convert-UnitOfSize $array_details.space.snapshots -To 1TB
+            } | Export-Excel $excelFile -WorksheetName 'Array_Info' -AutoSize -TableName 'ArrayInformation' -Title 'FlashArray Information'
+
+            ## Volume Details
+            $details = $volumes | Select-Object Name, `
+                @{n = 'Size(GB)'; e = { Convert-UnitOfSize $_.provisioned -To 1GB } }, `
+                @{n = 'Unique Data(GB)'; e = { Convert-UnitOfSize $_.space.Unique -To 1GB } }, `
+                @{n = 'Shared Data(GB)'; e = { Convert-UnitOfSize $_.space.Shared -To 1GB } }, `
+                Serial, `
+                ConnectionCount, `
+                Created, `
+                @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } }, `
+                Destroyed, `
+                TimeRemaining
+
+            $simple = @()
+            $vvol = @()
+            foreach ($v in $details) {
+                if ($v.Name -like '*vvol*') {
+                    $vvol +=$v
+                }
+                else {
+                    $simple +=$v
+                }
+            }
+
+            if ($simple) {
+                $simple | Export-Excel $excelFile -WorksheetName 'Volumes-No vVols' -AutoSize -TableName 'VolumesNovVols' -Title 'Volumes - Not including vVols'
+            }
+            else {
+                Write-Host 'No Volumes exist on Array. Skipping.'
+            }
+
+            if ($vvol) {
+                $vvol | Export-Excel $excelFile -WorksheetName 'vVol Volumes' -AutoSize -TableName 'vVolVolumes' -Title 'vVol Volumes'
+            }
+            else {
+                Write-Host 'No vVol Volume exist on Array. Skipping.'
+            }
+
+            ## Volume Snapshot details
+            if ($snapshots) {
+                $snapshots | Select-Object Name, `
+                    Created, `
+                    @{n = 'Provisioned(GB)'; e = { Convert-UnitOfSize $_.Provisioned -To 1GB } }, `
+                    Destroyed, `
+                    @{n = 'Source'; e = { $_.Source.Name } }, `
+                    @{n = 'Pod'; e = { $_.pod.name } }, `
+                    @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } } | 
+                Export-Excel $excelFile -WorksheetName 'Volume Snapshots' -AutoSize -TableName 'VolumeSnapshots' -Title 'Volume Snapshots'
+            }
+            else {
+                Write-Host 'No Volume Snapshots exist on Array. Skipping.'
+            }
+
+            # Host Details
+            if ($host_details) {
+                $host_details | Select-Object Name, `
+                    @{n = 'No. of Volumes'; e = { $_.ConnectionCount } }, `
+                    @{n = 'HostGroup'; e = { $_.HostGroup.Name } }, `
+                    Personality, `
+                    @{n = 'Allocated(GB)'; e = { Convert-UnitOfSize $_.space.totalprovisioned -To 1GB } }, `
+                    @{n = 'Wwns'; e = { $_.Wwns -join ', ' } } | 
+                Export-Excel $excelFile -WorksheetName 'Hosts' -AutoSize -TableName 'Hosts' -Title 'Host Information'
+            }
+            else {
+                Write-Host 'No Hosts exist on Array. Skipping.'
+            }
+            
+            ## HostGroup Details
+            if ($hostgroup) {
+                $hostgroup | Select-Object Name, `
+                    HostCount, `
+                    @{n = 'No. of Volumes'; e = { $_.ConnectionCount } }, `
+                    @{n = 'Total Size(GB)'; e = { Convert-UnitOfSize $_.space.totalprovisioned -To 1GB } } | 
+                Export-Excel $excelFile -WorksheetName 'Host Groups' -AutoSize -TableName 'HostGroups' -Title 'Host Groups'
+            }
+            else {
+                Write-Host 'No Host Groups exist on Array. Skipping.'
+            }
+            
+            ## Protection Group and Protection Group Transfer details
+            if ($pgd) {
+                $pgd | Select-Object Name, `
+                    @{n = 'Snapshot Size(GB)'; e = { Convert-UnitOfSize $_.space.snapshots -To 1GB } }, `
+                    VolumeCount, `
+                    @{n = 'Source'; e = { $_.source.name } } | 
+                Export-Excel $excelFile -WorksheetName 'Protection Groups' -AutoSize -TableName 'ProtectionGroups' -Title 'Protection Group'
+            }
+            else {
+                Write-Host 'No Protection Groups exist on Array. Skipping.'
+            }
+
+            if ($pgst) {
+                $pgst | Select-Object Name, `
+                    @{n = 'Data Transferred(MB)'; e = { Convert-UnitOfSize $_.DataTransferred -To 1MB } }, `
+                    Destroyed, `
+                    @{n = 'Physical Bytes Written(MB)'; e = { Convert-UnitOfSize $_.PhysicalBytesWritten -To 1MB } }, `
+                    @{n = 'Status'; e = { $_.Progress -Replace ('1', 'Transfer Complete') } } | 
+                Export-Excel $excelFile -WorksheetName 'PG Snapshot Transfers' -AutoSize -TableName 'PGroupSnapshotTransfers' -Title 'Protection Group Snapshot Transfers'
+            }
+            else {
+                Write-Host 'No Protection Group Transfer details on Array. Skipping.'
+            }
+
+            ## Pod details
+            if ($pods) {
+                $pods | Select-Object Name, `
+                    ArrayCount, `
+                    @{ n = 'Source'; e = { $_.source.name } }, `
+                    Mediator, `
+                    PromotionStatus, `
+                    Destroyed | 
+                Export-Excel $excelFile -WorksheetName 'Pods' -AutoSize -TableName 'Pods' -Title 'Pod Information'
+            }
+            else {
+                Write-Host 'No Pods exist on Array. Skipping.'
+            }
         }
     }
-    Write-Host "Complete. Files located in $outpath" -ForegroundColor green
+
+    end{
+        Write-Host "Complete. Files located in $(Resolve-Path $OutPath)" -ForegroundColor green
+    }
 }
 
 function New-HypervClusterVolumeReport() {
@@ -478,7 +366,9 @@ function New-HypervClusterVolumeReport() {
     .SYNOPSIS
     Creates a Excel report on volumes connected to a Hyper-V cluster.
     .DESCRIPTION
-    This creates separate CSV files for VM, Windows Hosts, and FlashArray information that is part of a HyperV cluster. It then takes that output and places it into a an Excel workbook that contains sheets for each CSV file.
+    This creates separate CSV files for VM, Windows Hosts, and FlashArray information for each endpoint specified that is part of a HyperV cluster. It then takes that output and places it into a an Excel workbook that contains sheets for each CSV file.
+    .PARAMETER Endpoint
+    Required. An IP address or FQDN of the FlashArray. Multiple endpoints can be specified.
     .PARAMETER VmCsvFileName
     Optional. Defaults to VMs.csv.
     .PARAMETER WinCsvFileName
@@ -492,96 +382,148 @@ function New-HypervClusterVolumeReport() {
     .OUTPUTS
     Outputs individual CSV files and creates an Excel workbook that is built using the required PowerShell module ImportExcel, created by Douglas Finke.
     .EXAMPLE
-    New-HypervClusterVolumeReport -EndPoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile
+    New-HypervClusterVolumeReport -Endpoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile.xlsx
 
     This will create three separate CSV files with HyperV cluster information and incorporate them into a single Excel workbook.
+
+    .EXAMPLE
+    New-HypervClusterVolumeReport -Endpoint 'myarray01', 'myarray02'
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray01, and myarray02.
+
+    .EXAMPLE
+    Get-Content '.\arrays.txt' | New-HypervClusterVolumeReport
+
+    This will create files with HyperV cluster information, and FlashArray information for each array in the arrays.txt file.
+
+    .EXAMPLE
+    New-HypervClusterVolumeReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential)
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .EXAMPLE
+    $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
+    $endpoint | New-HypervClusterVolumeReport
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
+
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Position = 0, Mandatory = $True)][ValidateNotNullOrEmpty()][string] $EndPoint,
-        [Parameter(Mandatory=$False)][string]$VmCsvFileName = "VMs.csv",
-        [Parameter(Mandatory=$False)][string]$WinCsvFileName = "WindowsHosts.csv",
-        [Parameter(Mandatory=$False)][string]$PfaCsvFileName = "FlashArrays.csv",
-        [Parameter(Mandatory=$False)][string]$ExcelFile = "HypervClusterReport.xlsx",
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Endpoint,
+        [string]$VmCsvFileName = "VMs.csv",
+        [string]$WinCsvFileName = "WindowsHosts.csv",
+        [string]$PfaCsvFileName = "FlashArrays.csv",
+        [string]$ExcelFile = "HypervClusterReport.xlsx",
         [Parameter(ValueFromPipelineByPropertyName)]
         [pscredential]$Credential = ( Get-PfaCredential )
     )
-    try {
-        Get-HypervStatus
 
-        ## Check for modules & features
-        Write-Host "Checking prerequisite modules."
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $modulesArray = @(
-            'Hyper-V', 'FailoverClusters'
-        )
-        ForEach ($mod in $modulesArray) {
-            If (Get-Module -ListAvailable $mod) {
-                Continue
-            }
-            Else {
-                Write-Error "Required module $mod not found"
-                Return
+    begin {
+        #Validate modules
+        $modules = @('Hyper-V', 'FailoverClusters')
+        foreach ($module in $modules) {
+            if (-not (Get-Module -ListAvailable $module)) {
+                Write-Error "Required module $module not found"
+                return
             }
         }
-
-        ## Get a list of VMs - VM Sheet
-        $vmList = Get-VM -ComputerName (Get-ClusterNode)
-        $vmList | ForEach-Object { $vmState = $_.state; $vmName = $_.name; Write-Output $_; } | ForEach-Object { Get-VHD -ComputerName $_.ComputerName -VMId $_.VMId
-        } | Select-Object -Property path, @{n = 'VMName'; e = { $vmName } }, @{n = 'VMState'; e = { $vmState } }, computername, vhdtype, @{Label = 'Size(GB)'; expression = { [Math]::Round($_.size / 1gb, 2) -as [int] } }, @{label = 'SizeOnDisk(GB)'; expression = { [Math]::Round($_.filesize / 1gb, 2) -as [int] } } | Export-Csv $VmCsvFileName
-        Import-Csv $VmCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'VMs'
-
-        ## Get windows physical disks - Windows Host Sheet
-        Get-ClusterNode | ForEach-Object { Get-WmiObject Win32_Volume -Filter "DriveType='3'" -ComputerName $_ | ForEach-Object {
-                [pscustomobject][ordered]@{
-                    Server        = $_.__Server
-                    Label         = $_.Label
-                    Name          = $_.Name
-                    TotalSize_GB  = ([Math]::Round($_.Capacity / 1GB, 2))
-                    FreeSpace_GB  = ([Math]::Round($_.FreeSpace / 1GB, 2))
-                    SizeOnDisk_GB = ([Math]::Round(($_.Capacity - $_.FreeSpace) / 1GB, 2))
-                }
-            } } | Export-Csv $WinCsvFileName -NoTypeInformation
-        Import-Csv $WinCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'Windows Hosts'
-        ## Get Pure FlashArray volumes and space - FlashArray Sheet
-        Function GetSerial {
-            [Cmdletbinding()]
-            Param(   [Parameter(ValueFromPipeline)]
-                $findserial)
-            $GetVol = Get-Volume -FilePath $findserial | Select-Object -ExpandProperty path
-            $GetDiskNum = Get-Partition | Where-Object -Property accesspaths -CContains $getvol | Select-Object disknumber
-            Get-Disk -Number $getdisknum.disknumber | Select-Object serialnumber
-        }
-        $pathQ = $VmList | ForEach-Object { Get-VHD -ComputerName $_.ComputerName -VMId $_.VMId } | Select-Object -ExpandProperty path
-        $serials = $pathQ | GetSerial -ErrorAction SilentlyContinue
-
-        # Connect to FlashArray
-        try {
-            $flashArray = Connect-Pfa2Array -Endpoint $EndPoint -Credential $Credential -IgnoreCertificateError
-        }
-        catch {
-            $ExceptionMessage = $_.Exception.Message
-            Write-Error "Failed to connect to FlashArray endpoint $Endpoint with: $ExceptionMessage"
-            Return
+    
+        #Get VMs & VHDs
+        $nodes = Get-ClusterNode
+        $vhds = Get-VM -ComputerName $nodes.Name | foreach { $_ } -PipelineVariable 'vm' | foreach {
+            Get-Vhd -ComputerName $_.ComputerName -VmId $_.VmId 
+        } | foreach {
+            [pscustomobject]@{
+                'VM Name'           = $vm.Name
+                'VM State'          = $vm.State
+                ComputerName        = $_.ComputerName
+                Path                = $_.Path
+                'VHD Type'          = $_.VhdType
+                'Size (GB)'         = Convert-UnitOfSize $_.Size -To 1GB
+                'Size on disk (GB)' = Convert-UnitOfSize $_.FileSize -To 1GB
+            }
         }
 
-        ## FlashArray volumes
-        try {
-            $pureVols = Get-Pfa2Volume -Array $FlashArray | Where-Object { $serials.serialnumber -contains $_.serial } | Select-Object name -ExpandProperty Space
-        }
-        finally {
-            Disconnect-Pfa2Array -Array $flashArray
+        if ($vhds) {
+            $vhds | Export-Csv $VmCsvFileName -NoTypeInformation
+            $vhds | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'VMs' -TableName 'vm'
         }
 
-        $pureVols | Select-Object Name, @{Name = "Size(GB)"; Expression = { [math]::round($_.TotalProvisioned / 1gb, 2) } }, @{Name = "SizeOnDisk(GB)"; Expression = { [math]::round($_.TotalPhysical / 1gb, 2) } }, @{Name = "DataReduction"; Expression = { [math]::round($_.DataReduction, 2) } } | Export-Csv $PfaCsvFileName -NoTypeInformation
-        Import-Csv $PfaCsvFileName | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'FlashArrays'
+        #Get hosts and volumes
+        $volumes = $nodes | foreach { $_ } -PipelineVariable 'node' | foreach {
+            Get-Disk -CimSession $node.Name | where Number -ne $null | Get-Partition | Get-Volume 
+        } | where DriveType -eq Fixed | foreach {
+            [pscustomobject]@{
+                ComputerName        = $node.Name
+                Label               = $_.FileSystemLabel
+                Name                = if ($_.DriveLetter) { "$($_.DriveLetter):\" } else { $_.Path }
+                'Total size (GB)'   = Convert-UnitOfSize $_.Size -To 1GB
+                'Free space (GB)'   = Convert-UnitOfSize $_.SizeRemaining -To 1GB
+                'Size on disk (GB)' = Convert-UnitOfSize ($_.Size - $_.SizeRemaining) -To 1GB
+            }
+        }
 
+        if ($volumes) {
+            $volumes | Export-Csv $WinCsvFileName -NoTypeInformation
+            $volumes | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'Windows Hosts' -TableName 'host'
+        }
+
+        #Get Pure volumes
+        $sn = $vhds | 
+        foreach { Get-Volume -FilePath $_.Path -CimSession $_.ComputerName } | 
+        group 'ObjectId' | 
+        foreach { $_.Group[0] } | 
+        Get-Partition | 
+        Get-Disk | 
+        select -ExpandProperty 'SerialNumber'
+
+        $pureVolumes = @()
     }
-    catch {
-        Write-Host "There was a problem running this cmdlet. Please try again or submit an Issue in the GitHub Repository."
+
+    process {
+        #Run through each array
+        foreach ($e in $Endpoint) {
+            #Connect to FlashArray
+            try {
+                $flashArray = Connect-Pfa2Array -Endpoint $e -Credential $Credential -IgnoreCertificateError
+            }
+            catch {
+                $ExceptionMessage = $_.Exception.Message
+                Write-Error "Failed to connect to FlashArray endpoint $e with: $ExceptionMessage"
+                return
+            }
+
+            #FlashArray volumes
+            try {
+                $details = Get-Pfa2Array -Array $flasharray
+
+                $pureVolumes += Get-Pfa2Volume -Array $flashArray | where { $sn -contains $_.serial } | select 'Name' -ExpandProperty 'Space' | foreach {
+                    [pscustomobject]@{
+                        Array               = $details.Name
+                        Name                = $_.Name
+                        'Size (GB)'         = Convert-UnitOfSize $_.TotalProvisioned -To 1GB
+                        'Size on disk (GB)' = Convert-UnitOfSize $_.TotalPhysical -To 1GB
+                        'Data Reduction'    = [math]::round($_.DataReduction, 2)
+                    }
+                }
+            }
+            finally {
+                Disconnect-Pfa2Array -Array $flashArray
+            }
+        }
+    }
+
+    end {
+        if ($pureVolumes) {
+            $pureVolumes | Export-Csv $PfaCsvFileName -NoTypeInformation
+            $pureVolumes | Export-Excel -Path $ExcelFile -AutoSize -WorkSheetname 'FlashArrays' -TableName 'volume'
+        }
     }
 }
 

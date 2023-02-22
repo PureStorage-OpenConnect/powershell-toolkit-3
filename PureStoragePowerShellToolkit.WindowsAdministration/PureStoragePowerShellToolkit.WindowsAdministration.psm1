@@ -23,231 +23,19 @@
 
 #region Helper functions
 
-function Convert-Size {
-    <#
-    .SYNOPSIS
-    Converts volume sizes from B to MB, MB, GB, TB.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle conversions.
-    .INPUTS
-    ConvertFrom (Mandatory)
-    ConvertTo (Mandatory)
-    Value (Mandatory)
-    Precision (Optional)
-    .OUTPUTS
-    Converted size of volume.
-    #>
-
+function Convert-UnitOfSize {
     [CmdletBinding()]
-    Param (
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertFrom,
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertTo,
-        [Parameter(Mandatory = $true)][Double]$Value,
-        [Parameter(Mandatory = $false)][Int]$Precision = 4
-    )
-
-    switch ($ConvertFrom) {
-        "Bytes" { $value = $Value }
-        "KB" { $value = $Value * 1024 }
-        "MB" { $value = $Value * 1024 * 1024 }
-        "GB" { $value = $Value * 1024 * 1024 * 1024 }
-        "TB" { $value = $Value * 1024 * 1024 * 1024 * 1024 }
-    }
-
-    switch ($ConvertTo) {
-        "Bytes" { return $value }
-        "KB" { $Value = $Value / 1KB }
-        "MB" { $Value = $Value / 1MB }
-        "GB" { $Value = $Value / 1GB }
-        "TB" { $Value = $Value / 1TB }
-    }
-
-    return [Math]::Round($Value, $Precision, [MidPointRounding]::AwayFromZero)
-}
-
-function ConvertTo-Base64() {
-<#
-    .SYNOPSIS
-	Converts source file to Base64.
-    .DESCRIPTION
-	Helper function
-	Supporting function to handle conversions.
-    .INPUTS
-	Source (Mandatory)
-    .OUTPUTS
-	Converted source.
-#>
-    Param (
-        [Parameter(Mandatory = $true)][String] $Source
-    )
-    return [Convert]::ToBase64String((Get-Content $Source -Encoding byte))
-}
-function Get-HypervStatus() {
-    <#
-    .SYNOPSIS
-	Confirms that the HyperV role is installed ont he server.
-    .DESCRIPTION
-	Helper function
-	Supporting function to ensure proper role is installed.
-    .OUTPUTS
-	Error on missing HyperV role.
-    #>
-    $hypervStatus = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V).State
-    if ($hypervStatus -ne "Enabled") {
-        Write-Host "Hyper-V is not running. This cmdlet must be run on a Hyper-V host."
-        break
-    }
-}
-function Set-PfaCredential {
-    <#
-    .SYNOPSIS
-    Sets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [CmdletBinding()]
-    [OutputType([void])]
-
     param (
-        [Parameter(Mandatory)]
-        [System.Management.Automation.Credential()]
-        [pscredential]$Credential
+        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Value,
+        $To = 1GB,
+        $From = 1,
+        $Decimals = 2
     )
 
-    $script:Creds = $Credential
-}
-
-function Get-PfaCredential {
-    <#
-    .SYNOPSIS
-    Gets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Credentials
-    #>
-    
-    [OutputType([pscredential])]
-
-    param ()
-
-    Set-PfaCredential $script:Creds
-    $script:Creds
-}
-
-function Clear-PfaCredential {
-    <#
-    .SYNOPSIS
-    Clears credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [OutputType([void])]
-
-    $script:Creds = $null
-}
-
-function Get-SdkModule() {
-    <#
-    .SYNOPSIS
-	Confirms that PureStoragePowerShellSDK version 2 module is loaded, present, or missing. If missing, it will download it and import. If internet access is not available, the function will error.
-    .DESCRIPTION
-	Helper function
-	Supporting function to load required module.
-    .OUTPUTS
-	PureStoragePowerShellSDK version 2 module.
-    #>
-
-    $m = "PureStoragePowerShellSDK2"
-    # If module is imported, continue
-    if (Get-Module | Where-Object { $_.Name -eq $m }) {
+    process {
+        return [math]::Round($Value * $From / $To, $Decimals)
     }
-    else {
-        # If module is not imported, but available on disk, then import
-        if (Get-InstalledModule | Where-Object { $_.Name -eq $m }) {
-            Import-Module $m -ErrorAction SilentlyContinue
-        }
-        else {
-            # If module is not imported, not available on disk, then install and import
-            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
-                Write-Warning "The $m module does not exist."
-                Write-Host "We will attempt to install the module from the PowerShell Gallery. Please wait..."
-                Install-Module -Name $m -Force -ErrorAction SilentlyContinue -Scope CurrentUser
-                Import-Module $m -ErrorAction SilentlyContinue
-            }
-            else {
-                # If module is not imported, not available on disk, and we cannot access it online, then abort
-                Write-Host "Module $m not imported, not available on disk, and we are not able to download it from the online gallery... Exiting."
-                EXIT 1
-            }
-        }
-    }
-}
-
-function New-FlashArrayReportPieChart() {
-<#
-    .SYNOPSIS
-	Creates graphic pie chart .png image file for use in report.
-    .DESCRIPTION
-	Helper function
-	Supporting function to create a pie chart.
-    .OUTPUTS
-	piechart.png.
-#>
-    Param (
-        [string]$FileName,
-        [float]$SnapshotSpace,
-        [float]$VolumeSpace,
-        [float]$CapacitySpace
-    )
-
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
-
-    $chart = New-Object System.Windows.Forms.DataVisualization.charting.chart
-    $chart.Width = 700
-    $chart.Height = 500
-    $chart.Left = 10
-    $chart.Top = 10
-
-    $chartArea = New-Object System.Windows.Forms.DataVisualization.charting.chartArea
-    $chart.chartAreas.Add($chartArea)
-    [void]$chart.Series.Add("Data")
-
-    $legend = New-Object system.Windows.Forms.DataVisualization.charting.Legend
-    $legend.Name = "Legend"
-    $legend.Font = "Verdana"
-    $legend.Alignment = "Center"
-    $legend.Docking = "top"
-    $legend.Bordercolor = "#FE5000"
-    $legend.Legendstyle = "row"
-    $chart.Legends.Add($legend)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $SnapshotSpace)
-    $datapoint.AxisLabel = "SnapShots " + "(" + $SnapshotSpace + " MB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $VolumeSpace)
-    $datapoint.AxisLabel = "Volumes " + "(" + $VolumeSpace + " GB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $chart.Series["Data"].chartType = [System.Windows.Forms.DataVisualization.charting.SerieschartType]::Doughnut
-    $chart.Series["Data"]["DoughnutLabelStyle"] = "Outside"
-    $chart.Series["Data"]["DoughnutLineColor"] = "#FE5000"
-
-    $Title = New-Object System.Windows.Forms.DataVisualization.charting.Title
-    $chart.Titles.Add($Title)
-    $chart.SaveImage($FileName + ".png", "png")
 }
 function Write-Color {
     [CmdletBinding()]
@@ -619,8 +407,6 @@ function Get-WindowsDiagnosticInfo() {
     This script will collect detailed information on the Windows operating system, hardware and software components, and collect event logs in .evtx and .csv formats. It will optionally collect WSFC logs and optionally compress all gathered files intoa .zip file for easy distribution.
     This script will place all of the files in a parent folder in the root of the C:\ drive that is named after the computer NetBios name($env:computername).
     Each section of information gathered will have it's own child folder in that parent folder.
-    .PARAMETER Path
-    Optional. Path to report file which will be created by the cmdlet. %TEMP%/%COMPUTERNAME% by default.
     .PARAMETER Cluster
     Optional. Collect Windows Server Failover Cluster (WSFC) logs.
     .PARAMETER Compress
@@ -1345,14 +1131,10 @@ function Test-WindowsBestPractices() {
     .DESCRIPTION
     This cmdlet will retrieve the curretn host infromation, and iterate through several tests around MPIO (FC) and iSCSI OS settings and hardware, indicate whether they are adhearing to Pure Storage FlashArray Best Practices, and offer to alter the settings if applicable.
     All tests can be bypassed with a negative user response when prompted, or simply by using Ctrl-C to break the process.
-    .PARAMETER Repair
-    Optional. When present, the cmdlet applies fixes when needed. When combined with `-Confirm` switch, the cmdlet asks confirmation before each fix.
-    .PARAMETER IncludeIscsi
+    .PARAMETER EnableIscsiTests
     Optional. If this parameter is present, the cmdlet will run tests for iSCSI settings.
     .PARAMETER OutFile
     Optional. Specify the full filepath (ex. c:\mylog.log) for logging. If not specified, the default file of %TMP%\Test-WindowsBestPractices.log will be used.
-    .PARAMETER Force
-    Optional. When present, forces fixes for all iSCSI adapters. The cmdlet asks confirmation for each adapter otherwise.
     .INPUTS
     Optional parameter for iSCSI testing.
     .OUTPUTS

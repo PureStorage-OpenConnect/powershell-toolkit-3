@@ -24,231 +24,19 @@
 
 #region Helper functions
 
-function Convert-Size {
-    <#
-    .SYNOPSIS
-    Converts volume sizes from B to MB, MB, GB, TB.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle conversions.
-    .INPUTS
-    ConvertFrom (Mandatory)
-    ConvertTo (Mandatory)
-    Value (Mandatory)
-    Precision (Optional)
-    .OUTPUTS
-    Converted size of volume.
-    #>
-
+function Convert-UnitOfSize {
     [CmdletBinding()]
-    Param (
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertFrom,
-        [Parameter(Mandatory = $true)][ValidateSet("Bytes", "KB", "MB", "GB", "TB")][String]$ConvertTo,
-        [Parameter(Mandatory = $true)][Double]$Value,
-        [Parameter(Mandatory = $false)][Int]$Precision = 4
-    )
-
-    switch ($ConvertFrom) {
-        "Bytes" { $value = $Value }
-        "KB" { $value = $Value * 1024 }
-        "MB" { $value = $Value * 1024 * 1024 }
-        "GB" { $value = $Value * 1024 * 1024 * 1024 }
-        "TB" { $value = $Value * 1024 * 1024 * 1024 * 1024 }
-    }
-
-    switch ($ConvertTo) {
-        "Bytes" { return $value }
-        "KB" { $Value = $Value / 1KB }
-        "MB" { $Value = $Value / 1MB }
-        "GB" { $Value = $Value / 1GB }
-        "TB" { $Value = $Value / 1TB }
-    }
-
-    return [Math]::Round($Value, $Precision, [MidPointRounding]::AwayFromZero)
-}
-
-function ConvertTo-Base64() {
-<#
-    .SYNOPSIS
-	Converts source file to Base64.
-    .DESCRIPTION
-	Helper function
-	Supporting function to handle conversions.
-    .INPUTS
-	Source (Mandatory)
-    .OUTPUTS
-	Converted source.
-#>
-    Param (
-        [Parameter(Mandatory = $true)][String] $Source
-    )
-    return [Convert]::ToBase64String((Get-Content $Source -Encoding byte))
-}
-function Get-HypervStatus() {
-    <#
-    .SYNOPSIS
-	Confirms that the HyperV role is installed ont he server.
-    .DESCRIPTION
-	Helper function
-	Supporting function to ensure proper role is installed.
-    .OUTPUTS
-	Error on missing HyperV role.
-    #>
-    $hypervStatus = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V).State
-    if ($hypervStatus -ne "Enabled") {
-        Write-Host "Hyper-V is not running. This cmdlet must be run on a Hyper-V host."
-        break
-    }
-}
-function Set-PfaCredential {
-    <#
-    .SYNOPSIS
-    Sets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [CmdletBinding()]
-    [OutputType([void])]
-
     param (
-        [Parameter(Mandatory)]
-        [System.Management.Automation.Credential()]
-        [pscredential]$Credential
+        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Value,
+        $To = 1GB,
+        $From = 1,
+        $Decimals = 2
     )
 
-    $script:Creds = $Credential
-}
-
-function Get-PfaCredential {
-    <#
-    .SYNOPSIS
-    Gets credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Credentials
-    #>
-    
-    [OutputType([pscredential])]
-
-    param ()
-
-    Set-PfaCredential $script:Creds
-    $script:Creds
-}
-
-function Clear-PfaCredential {
-    <#
-    .SYNOPSIS
-    Clears credentials for FlashArray authentication.
-    .DESCRIPTION
-    Helper function
-    Supporting function to handle connections.
-    .OUTPUTS
-    Nothing
-    #>
-    
-    [OutputType([void])]
-
-    $script:Creds = $null
-}
-
-function Get-SdkModule() {
-    <#
-    .SYNOPSIS
-	Confirms that PureStoragePowerShellSDK version 2 module is loaded, present, or missing. If missing, it will download it and import. If internet access is not available, the function will error.
-    .DESCRIPTION
-	Helper function
-	Supporting function to load required module.
-    .OUTPUTS
-	PureStoragePowerShellSDK version 2 module.
-    #>
-
-    $m = "PureStoragePowerShellSDK2"
-    # If module is imported, continue
-    if (Get-Module | Where-Object { $_.Name -eq $m }) {
+    process {
+        return [math]::Round($Value * $From / $To, $Decimals)
     }
-    else {
-        # If module is not imported, but available on disk, then import
-        if (Get-InstalledModule | Where-Object { $_.Name -eq $m }) {
-            Import-Module $m -ErrorAction SilentlyContinue
-        }
-        else {
-            # If module is not imported, not available on disk, then install and import
-            if (Find-Module -Name $m | Where-Object { $_.Name -eq $m }) {
-                Write-Warning "The $m module does not exist."
-                Write-Host "We will attempt to install the module from the PowerShell Gallery. Please wait..."
-                Install-Module -Name $m -Force -ErrorAction SilentlyContinue -Scope CurrentUser
-                Import-Module $m -ErrorAction SilentlyContinue
-            }
-            else {
-                # If module is not imported, not available on disk, and we cannot access it online, then abort
-                Write-Host "Module $m not imported, not available on disk, and we are not able to download it from the online gallery... Exiting."
-                EXIT 1
-            }
-        }
-    }
-}
-
-function New-FlashArrayReportPieChart() {
-<#
-    .SYNOPSIS
-	Creates graphic pie chart .png image file for use in report.
-    .DESCRIPTION
-	Helper function
-	Supporting function to create a pie chart.
-    .OUTPUTS
-	piechart.png.
-#>
-    Param (
-        [string]$FileName,
-        [float]$SnapshotSpace,
-        [float]$VolumeSpace,
-        [float]$CapacitySpace
-    )
-
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
-
-    $chart = New-Object System.Windows.Forms.DataVisualization.charting.chart
-    $chart.Width = 700
-    $chart.Height = 500
-    $chart.Left = 10
-    $chart.Top = 10
-
-    $chartArea = New-Object System.Windows.Forms.DataVisualization.charting.chartArea
-    $chart.chartAreas.Add($chartArea)
-    [void]$chart.Series.Add("Data")
-
-    $legend = New-Object system.Windows.Forms.DataVisualization.charting.Legend
-    $legend.Name = "Legend"
-    $legend.Font = "Verdana"
-    $legend.Alignment = "Center"
-    $legend.Docking = "top"
-    $legend.Bordercolor = "#FE5000"
-    $legend.Legendstyle = "row"
-    $chart.Legends.Add($legend)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $SnapshotSpace)
-    $datapoint.AxisLabel = "SnapShots " + "(" + $SnapshotSpace + " MB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $datapoint = New-Object System.Windows.Forms.DataVisualization.charting.DataPoint(0, $VolumeSpace)
-    $datapoint.AxisLabel = "Volumes " + "(" + $VolumeSpace + " GB)"
-    $chart.Series["Data"].Points.Add($datapoint)
-
-    $chart.Series["Data"].chartType = [System.Windows.Forms.DataVisualization.charting.SerieschartType]::Doughnut
-    $chart.Series["Data"]["DoughnutLabelStyle"] = "Outside"
-    $chart.Series["Data"]["DoughnutLineColor"] = "#FE5000"
-
-    $Title = New-Object System.Windows.Forms.DataVisualization.charting.Title
-    $chart.Titles.Add($Title)
-    $chart.SaveImage($FileName + ".png", "png")
 }
 function Write-Color {
     [CmdletBinding()]
@@ -1262,6 +1050,64 @@ function Get-FlashArrayVolumeGrowth() {
     }
 }
 
+function Set-PfaCredential {
+    <#
+    .SYNOPSIS
+    Sets credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Nothing
+    #>
+    
+    [CmdletBinding()]
+    [OutputType([void])]
+
+    param (
+        [Parameter(Mandatory)]
+        [System.Management.Automation.Credential()]
+        [pscredential]$Credential
+    )
+
+    $script:Creds = $Credential
+}
+
+function Get-PfaCredential {
+    <#
+    .SYNOPSIS
+    Gets credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Credentials
+    #>
+    
+    [OutputType([pscredential])]
+
+    param ()
+
+    Set-PfaCredential $script:Creds
+    $script:Creds
+}
+
+function Clear-PfaCredential {
+    <#
+    .SYNOPSIS
+    Clears credentials for FlashArray authentication.
+    .DESCRIPTION
+    Helper function
+    Supporting function to handle connections.
+    .OUTPUTS
+    Nothing
+    #>
+    
+    [OutputType([void])]
+
+    $script:Creds = $null
+}
+
 function New-FlashArrayCapacityReport() {
     <#
     .SYNOPSIS
@@ -1330,18 +1176,17 @@ function New-FlashArrayCapacityReport() {
         # populate variables
         $FlashArrayConfig = Get-Pfa2Array -Array $FlashArray
 
-        $sysCapacity = Convert-Size -ConvertFrom Bytes -ConvertTo TB $FlashArrayConfig.capacity -Precision 2
-        $sysSnapshotSpace = Convert-Size -ConvertFrom Bytes -ConvertTo MB $FlashArrayConfig.Space.snapshots -Precision 4
-        $sysVolumeSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.Unique -Precision 2
-        $sysDRR = [system.Math]::Round($FlashArrayConfig.Space.DataReduction, 1)
-        $sysSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.TotalPhysical -Precision 2
-        $sysSharedSpace = Convert-Size -ConvertFrom Bytes -ConvertTo GB $FlashArrayConfig.Space.Shared -Precision 0
+        $sysCapacity = $FlashArrayConfig.Capacity / 1TB
+        $sysSnapshotSpace = $FlashArrayConfig.Space.Snapshots / 1MB
+        $sysVolumeSpace = $FlashArrayConfig.Space.Unique / 1GB
+        $sysSpace = $FlashArrayConfig.Space.TotalPhysical / 1GB
+        $sysSharedSpace = $FlashArrayConfig.Space.Shared / 1GB
 
-        if ([system.Math]::Round($FlashArrayConfig.Space.TotalReduction, 1) -gt 100) {
-            $sysTotalDRR = ">100:1"
+        if ($FlashArrayConfig.Space.TotalReduction -gt 100) {
+            $sysTotalReduction = '>100:1'
         }
         else {
-            $sysTotalDRR = ([system.Math]::Round($FlashArrayConfig.Space.TotalReduction, 1)).toString() + ":1"
+            $sysTotalReduction = "$('{0:N1}' -f $FlashArrayConfig.Space.TotalReduction):1"
         }
 
         # zero out varables
@@ -1353,8 +1198,8 @@ function New-FlashArrayCapacityReport() {
 
         ForEach ($volume in $volumes) {
             $printVol = $volume.name
-            $volSize = ($volume.Provisioned) / 1GB
-            $provisioned = (Convert-Size -ConvertFrom GB -ConvertTo TB $volSize -Precision 4) + $provisioned
+            $volSize = $volume.Provisioned / 1GB
+            $provisioned += $volume.Provisioned / 1TB
             $datardx = "{0:N2}" -f $volume.Space.DataReduction
             $dataTP = "{0:N3}" -f $volume.Space.ThinProvisioning
             $WrittenSpace = "{0:N2}" -f (((1 - $volume.Space.ThinProvisioning) * $volume.Space.TotalPhysical) / 1GB)
@@ -1536,7 +1381,7 @@ div.absolute {
     position: absolute;
     top: 80px;
     left: 350px;
-    width: 200px;
+    width: 250px;
     height: 75px;
 	font-size: 14px;
 	font-weight: bold;
@@ -2185,7 +2030,7 @@ AElFTkSuQmCC">
 </tr>
 <tr>
 <td>Total Volumes Space</td>
-<td>$sysVolumeSpace G</td>
+<td>$("{0:N2}" -f $sysVolumeSpace) G</td>
 </tr>
 <tr>
 <td>Total Snapshots Space</td>
@@ -2205,15 +2050,15 @@ AElFTkSuQmCC">
 </tr>
 <tr>
 <td>System Data Reduction</td>
-<td>$("{0:N2}" -f $sysDRR):1</td>
+<td>$("{0:N2}" -f $FlashArrayConfig.Space.DataReduction):1</td>
 </tr>
 <tr>
 <td>Total Data Reduction</td>
-<td>$($sysTotalDRR)</td>
+<td>$sysTotalReduction</td>
 </tr>
 <tr>
 <td>Provisioned Space</td>
-<td> $("{0:N2}" -f $provisioned) T</td>
+<td>$("{0:N2}" -f $provisioned) T</td>
 </tr>
 </table>
 <h3>Volume Information</h3>
@@ -2580,4 +2425,7 @@ Export-ModuleMember -Function Restore-PfaPGroupVolumeSnapshots
 Export-ModuleMember -Function Sync-FlashArrayHosts
 Export-ModuleMember -Function New-FlashArrayPGroupVolumes
 Export-ModuleMember -Function New-FlashArrayCapacityReport
+Export-ModuleMember -Function Get-PfaCredential
+Export-ModuleMember -Function Set-PfaCredential
+Export-ModuleMember -Function Clear-PfaCredential
 # END
