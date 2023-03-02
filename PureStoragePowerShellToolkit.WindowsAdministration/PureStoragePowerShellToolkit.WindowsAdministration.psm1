@@ -156,16 +156,40 @@ function Get-FlashArraySerialNumbers() {
     Get-FlashArraySerialNumbers -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    'myComputer' | Get-FlashArraySerialNumbers
+
+    Returns serial number information on Pure FlashArray disk devices connected to 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Get-FlashArraySerialNumbers
+
+    Returns serial number information on Pure FlashArray disk devices with previously created CIM session.
+
+    .EXAMPLE
+    'myComputer01', 'myComputer02' | Get-FlashArraySerialNumbers
+
+    Returns serial number information on Pure FlashArray disk devices connected to 'myComputer01' and 'myComputer02' with current credentials.
+
+    .EXAMPLE
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
+    $prod | Get-FlashArraySerialNumbers
+
+    Returns serial number information on Pure FlashArray disk devices connected to 'myComputer' with current credentials.
     #>
 
     [CmdletBinding()]
     Param (
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    Get-CimInstance -ClassName 'Win32_DiskDrive' -Filter 'Model LIKE ''PURE FlashArray%''' @PSBoundParameters | 
-    select 'Name', 'Caption', 'Index', 'SerialNumber'
+    process {
+        Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | select PSComputerName, Number, SerialNumber
+    }
 }
 
 function Get-HostBusAdapter() {
@@ -212,34 +236,60 @@ function Get-HostBusAdapter() {
     Get-HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Returns HBA information for 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    'myComputer' | Get-HostBusAdapter
+
+    Returns HBA information for 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Get-HostBusAdapter
+
+    Returns HBA information for 'myComputer' with previously created CIM session.
+
+    .EXAMPLE
+    'myComputer01', 'myComputer02' | Get-HostBusAdapter
+
+    Returns HBA information for 'myComputer01' and 'myComputer02' with current credentials.
+
+    .EXAMPLE
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
+    $prod | Get-HostBusAdapter
+
+    Returns HBA information for 'myComputer' with current credentials.
     #>
 
     [CmdletBinding()]
     Param (
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    function ConvertTo-HexAndColons([byte[]]$address) {
-        return (($address | foreach { '{0:x2}' -f $_ }) -join ':').ToUpper()
-    }
+    process {
 
-    try {
-        $ports = Get-CimInstance -Class 'MSFC_FibrePortHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters
-        $adapters = Get-CimInstance -Class 'MSFC_FCAdapterHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters
-
-        foreach ($adapter in $adapters) {
-            $attributes = $ports.Where({ $_.InstanceName -eq $adapter.InstanceName }, 'first').Attributes
-
-            $adapter | select -ExcludeProperty 'NodeWWN', 'Cim*' -Property *, 
-            @{n = 'NodeWWN'; e = { ConvertTo-HexAndColons $_.NodeWWN } }, 
-            @{n = 'FabricName'; e = { ConvertTo-HexAndColons $attributes.FabricName } }, 
-            @{n = 'PortWWN'; e = { ConvertTo-HexAndColons $attributes.PortWWN } }
+        function ConvertTo-HexAndColons([byte[]]$address) {
+            return (($address | foreach { '{0:x2}' -f $_ }) -join ':').ToUpper()
         }
-    }
-    catch [Microsoft.Management.Infrastructure.CimException] {
-        if ($_.Exception.NativeErrorCode -ne 'NotSupported') {
-            throw
+
+        try {
+            $ports = Get-CimInstance -Class 'MSFC_FibrePortHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters -ea Stop
+            $adapters = Get-CimInstance -Class 'MSFC_FCAdapterHBAAttributes' -Namespace 'root\WMI' @PSBoundParameters -ea Stop
+
+            foreach ($adapter in $adapters) {
+                $attributes = $ports.Where({ $_.InstanceName -eq $adapter.InstanceName }, 'first').Attributes
+
+                $adapter | select -ExcludeProperty 'NodeWWN', 'Cim*' -Property *, 
+                @{n = 'NodeWWN'; e = { ConvertTo-HexAndColons $_.NodeWWN } }, 
+                @{n = 'FabricName'; e = { ConvertTo-HexAndColons $attributes.FabricName } }, 
+                @{n = 'PortWWN'; e = { ConvertTo-HexAndColons $attributes.PortWWN } }
+            }
+        }
+        catch [Microsoft.Management.Infrastructure.CimException] {
+            if ($_.Exception.NativeErrorCode -ne 'NotSupported') {
+                throw
+            }
         }
     }
 }
@@ -250,22 +300,39 @@ function Get-MPIODiskLBPolicy() {
     Retrieves the current MPIO Load Balancing policy for Pure FlashArray disk(s).
     .DESCRIPTION
     This cmdlet will retrieve the current MPIO Load Balancing policy for connected Pure FlashArrays disk(s) using the mpclaim.exe utlity.
-    .PARAMETER DiskID
-    Optional. If specified, retrieves only the policy for the that disk ID. Otherwise, returns all disks.
-    DiskID is the 'Number' identifier of the disk from the cmdlet 'Get-Disk'.
+    .PARAMETER DiskId
+    Optional. If specified, retrieves only the policy for the that MPIO disk. Otherwise, returns all disks.
     .INPUTS
-    None
+    Disk number is optional.
     .OUTPUTS
-    mpclaim.exe output
+    mpclaim.exe output.
     .EXAMPLE
-    Get-MPIODiskLBPolicy -DiskID 1
+    Get-MPIODiskLBPolicy
 
-    Returns the current MPIO LB policy for disk ID 1.
+    Returns the current MPIO Load Balancing Policy for all MPIO disks.
+
+    .EXAMPLE
+    Get-MPIODiskLBPolicy -DiskId 1
+
+    Returns the current MPIO LB policy for MPIO disk 1.
+
+    .EXAMPLE
+    2, 3 | Get-MPIODiskLBPolicy
+
+    Returns the current MPIO LB policy for MPIO disks 2 and 3.
+
+    .EXAMPLE
+    $dataDisk = [pscustomobject]@{Caption = 'Prod Data'; DiskId = 2}
+    $dataDisk | Get-MPIODiskLBPolicy
+
+    Returns the current MPIO LB policy for MPIO disk 2.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $False, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [string]$DiskId
+        [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateRange(0, [int]::MaxValue)]
+        [int]$DiskId
     )
 
     process {
@@ -275,10 +342,10 @@ function Get-MPIODiskLBPolicy() {
             Write-Error 'mpclaim.exe not found. Is MultiPathIO enabled? Exiting.' -ErrorAction Stop
         }
 
-        $expr = "mpclaim.exe -s -d "
+        $expr = 'mpclaim.exe -s -d '
 
-        if ($DiskId) {
-            Write-Host "Getting current MPIO Load Balancing Policy for DiskID $DiskId" -ForegroundColor Green
+        if ($PSBoundParameters.ContainsKey('DiskId')) {
+            Write-Host "Getting current MPIO Load Balancing Policy for MPIO disk $DiskId" -ForegroundColor Green
             $expr += $DiskId
         }
         else {
@@ -333,61 +400,89 @@ function Get-QuickFixEngineering() {
     Get-QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    'myComputer' | Get-QuickFixEngineering
+
+    Retrieves all the Windows OS QFE patches applied to 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Get-QuickFixEngineering
+
+    Retrieves all the Windows OS QFE patches applied to 'myComputer' with previously created CIM session.
+
+    .EXAMPLE
+    'myComputer01', 'myComputer02' | Get-QuickFixEngineering
+
+    Retrieves all the Windows OS QFE patches applied to 'myComputer01' and 'myComputer02' with current credentials.
+
+    .EXAMPLE
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
+    $prod | Get-QuickFixEngineering
+
+    Retrieves all the Windows OS QFE patches applied to 'myComputer' with current credentials.
     #>
 
     [CmdletBinding()]
     Param (
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    Get-CimInstance -Class 'Win32_QuickFixEngineering' @PSBoundParameters |
-    select Description, HotFixID, InstalledOn
+    process {
+        Get-CimInstance -Class 'Win32_QuickFixEngineering' @PSBoundParameters | select PSComputerName, Description, HotFixID, InstalledOn
+    }
 }
 
 function Get-VolumeShadowCopy() {
     <#
     .SYNOPSIS
-    Retrieves the volume shadow copy informaion using the Diskhadow command.
+    Exposes volume shadow copy using the Diskshadow command.
     .DESCRIPTION
-
+    This cmdlet will expose volume shadow copy using the Diskshadow command, passing the variables specified.
     .PARAMETER ExposeAs
     Required. Drive letter, share, or mount point to expose the shadow copy.
-    .PARAMETER ScriptName
-    Optional. Script text file name created to pass to the Diskshadow command. defaults to 'PUREVSS-SNAP'.
     .PARAMETER Alias
     Required. Name of the shadow copy alias.
     .PARAMETER MetadataFile
-    Required. Full filename for the metadata .cab file. It must exist in the current working folder.
+    Required. Filename for the metadata .cab file.
     .PARAMETER VerboseMode
-    Optional. "On" or "Off". If set to 'off', verbose mode for the Diskshadow command is disabled. Default is 'On'.
+    Optional. 'On' or 'Off'. If set to 'Off', verbose mode for the Diskshadow command is disabled. Default is 'On'.
     .INPUTS
     None
     .OUTPUTS
-    None
+    diskshadow.exe output.
     .EXAMPLE
-    Get-VolumeShadowCopy -MetadataFile myFile.cab -Alias MyAlias -ExposeAs MyShadowCopy
+    Get-VolumeShadowCopy -MetadataFile prodmeta.cab -Alias Prod -ExposeAs G:
 
-    Exposes the MyAias shadow copy as drive latter G: using the myFie.cab metadata file.
+    Exposes the Prod shadow copy as drive letter G: using the prodmeta.cab metadata file.
 
     .NOTES
-    See https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/diskshadow for more information on the Diskshadow utility.
+    See https://docs.microsoft.com/windows-server/administration/windows-commands/diskshadow for more information on the Diskshadow utility.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][string]$MetadataFile,
-        [Parameter(Mandatory = $True)][string]$Alias,
-        [Parameter(Mandatory = $True)][string]$ExposeAs,
-        [ValidateSet('On', 'Off')][string]$VerboseMode = 'On',
-        [string]$ScriptName = 'PUREVSS-SNAP'
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [string]$MetadataFile,
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [string]$Alias,
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [string]$ExposeAs,
+        [ValidateSet('On', 'Off')]
+        [string]$VerboseMode = 'On'
     )
 
-    $dsh = "./$ScriptName.PFA"
+    $dsh = "./PUREVSS-SNAP.PFA"
     try {
         'RESET',
         "SET VERBOSE $VerboseMode",
-        "LOAD METADATA $MetadataFile.cab",
+        "LOAD METADATA $MetadataFile",
         'IMPORT',
         "EXPOSE %$Alias% $ExposeAs",
         'EXIT' | Set-Content $dsh
@@ -400,13 +495,15 @@ function Get-VolumeShadowCopy() {
 
 function Get-WindowsDiagnosticInfo() {
     <#
-
     .SYNOPSIS
     Gathers Windows operating system, hardware, and software information, including logs for diagnostics. This cmdlet requires Administrative permissions.
     .DESCRIPTION
     This script will collect detailed information on the Windows operating system, hardware and software components, and collect event logs in .evtx and .csv formats. It will optionally collect WSFC logs and optionally compress all gathered files intoa .zip file for easy distribution.
-    This script will place all of the files in a parent folder in the root of the C:\ drive that is named after the computer NetBios name($env:computername).
+    This script will place all of the files in a parent folder that is named after the computer NetBios name($env:computername).
     Each section of information gathered will have it's own child folder in that parent folder.
+    By default, the output will be placed in the %temp% folder.
+    .PARAMETER Path
+    Optional. Directory path for the output. If not specified, the output will be placed in the %temp% folder.
     .PARAMETER Cluster
     Optional. Collect Windows Server Failover Cluster (WSFC) logs.
     .PARAMETER Compress
@@ -417,6 +514,11 @@ function Get-WindowsDiagnosticInfo() {
     Diagnostic outputs in txt and event log files.
     Compressed zip file.
     .EXAMPLE
+    Get-WindowsDiagnosticInfo.ps1 -Path '.\diagnostic_report' -Cluster
+
+    Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the 'diagnostic_report' folder.
+
+    .EXAMPLE
     Get-WindowsDiagnosticInfo.ps1 -Cluster
 
     Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the default folder.
@@ -424,7 +526,7 @@ function Get-WindowsDiagnosticInfo() {
     .EXAMPLE
     Get-WindowsDiagnosticInfo.ps1 -Compress
 
-    Retrieves all of the operating system, hardware, software, event log, and compresses the parent folder into a zip file that will be created in the root of the C: drive.
+    Retrieves all of the operating system, hardware, software, event log, and compresses the parent folder into a zip file that will be created in the %temp% folder.
 
     .NOTES
     This cmdlet requires Administrative permissions.
@@ -432,9 +534,9 @@ function Get-WindowsDiagnosticInfo() {
 
     [cmdletbinding()]
     Param(
-        [Parameter()][string]$Path = (Join-Path $env:Temp $env:computername),
-        [Parameter()][switch]$Cluster,
-        [Parameter()][switch]$Compress
+        [string]$Path = (Join-Path $env:Temp $env:computername),
+        [switch]$Cluster,
+        [switch]$Compress
     )
 
     {
@@ -582,56 +684,83 @@ function Get-Diagnostic() {
         Write-Host "Retrieving $header completed." -ForegroundColor Green
     }
 }
+
 function New-VolumeShadowCopy() {
     <#
     .SYNOPSIS
-    Creates a new volume shadow copy using Diskshadow.
+    Creates a new volume shadow copy using the Diskshadow command.
     .DESCRIPTION
     This cmdlet will create a new volume shadow copy using the Diskshadow command, passing the variables specified.
     .PARAMETER Volume
-    Required.
-    .PARAMETER Scriptname
-    Optional. Script text file name created to pass to the Diskshadow command. Pre-defined as 'PUREVSS-SNAP'.
+    Required. A volume to add to the set.
     .PARAMETER Alias
     Required. Name of the shadow copy alias.
     .PARAMETER VerboseMode
-    Optional. "On" or "Off". If set to 'off', verbose mode for the Diskshadow command is disabled. Default is 'on'.
+    Optional. 'On' or 'Off'. If set to 'Off', verbose mode for the Diskshadow command is disabled. Default is 'On'.
     .INPUTS
-    None
+    A volume to add to the set.
     .OUTPUTS
-    None
+    diskshadow.exe output.
     .EXAMPLE
-    New-VolumeShadowCopy -Volume Volume01 -Alias MyAlias
+    New-VolumeShadowCopy -Volume G: -Alias Prod
 
-    Adds a new volume shadow copy of Volume01 using Diskshadow with an alias of 'MyAlias'.
+    Creates a new volume shadow copy of volume G: and assigns an alias named Prod.
+
+    .EXAMPLE
+    New-VolumeShadowCopy -Volume G:, H: -Alias Prod
+
+    Creates a new volume shadow copy of volumes G: and H: and assigns an aliases named Prod and Prod2 respectively.
+
+    .EXAMPLE
+    'G:', 'H:' | New-VolumeShadowCopy -Alias Prod
+
+    Creates a new volume shadow copy of volumes G: and H: and assigns an aliases named Prod and Prod2 respectively.
 
     .NOTES
-    See https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/diskshadow for more information on the Diskshadow utility.
+    See https://docs.microsoft.com/windows-server/administration/windows-commands/diskshadow for more information on the Diskshadow utility.
     #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory = $True)][string[]]$Volume,
-        [Parameter(Mandatory = $True)][string]$Alias,
-        [ValidateSet('On', 'Off')][string]$VerboseMode = 'On',
-        [string]$ScriptName = 'PUREVSS-SNAP'
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullorEmpty()]
+        [string[]]$Volume,
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [string]$Alias,
+        [ValidateSet('On', 'Off')]
+        [string]$VerboseMode = 'On'
     )
 
-    $dsh = "./$ScriptName.PFA"
-    try {
-        'RESET',
-        "SET VERBOSE $VerboseMode",
-        'SET CONTEXT PERSISTENT',
-        'SET OPTION TRANSPORTABLE',
-        'BEGIN BACKUP',
-        ($Volume | foreach { $i = 0 } { "ADD VOLUME $_ ALIAS $($Alias)$(($i++)) PROVIDER {781c006a-5829-4a25-81e3-d5e43bd005ab}" } ),
-        'CREATE',
-        'END BACKUP',
-        'EXIT' | Set-Content $dsh
-        DISKSHADOW /s $dsh
+    begin {
+        $i = 1
+        $volumes = @()
     }
-    finally {
-        Remove-Item $dsh -ErrorAction SilentlyContinue
+
+    process {
+        $volumes += $Volume | foreach { 
+            "ADD VOLUME $_ ALIAS $Alias$(if ($i -gt 1) {$i}) PROVIDER {781c006a-5829-4a25-81e3-d5e43bd005ab}"
+            $i++
+        }
+    }
+
+    end {
+        $dsh = "./PUREVSS-SNAP.PFA"
+        try {
+            'RESET',
+            "SET VERBOSE $VerboseMode",
+            'SET CONTEXT PERSISTENT',
+            'SET OPTION TRANSPORTABLE',
+            'BEGIN BACKUP',
+            $volumes,
+            'CREATE',
+            'END BACKUP',
+            'EXIT' | Set-Content $dsh
+            DISKSHADOW /s $dsh
+        }
+        finally {
+            Remove-Item $dsh -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -655,48 +784,79 @@ function Register-HostVolumes() {
     .EXAMPLE
     Register-HostVolumes -CimSession 'myComputer'
 
-    Set to online all Pure FlashArray connected to 'myConputer' with current credentials.
+    Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
     Register-HostVolumes -CimSession $session
     Get-HostBusAdapter -CimSession $session
 
-    Set to online all Pure FlashArray connected to 'myConputer' and gets host bus adapter 
+    Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
     Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
-    Set to online all Pure FlashArray connected to 'myConputer' with credentials stored in variable $Creds.
+    Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
     Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
-    Set to online all Pure FlashArray connected to 'myConputer' with credentials stored in a secret vault.
+    Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
     Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
-    Set to online all Pure FlashArray connected to 'myConputer'. Asks for credentials.
+    Set to online all Pure FlashArray connected to 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    'myComputer' | Register-HostVolumes
+
+    Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Register-HostVolumes
+
+    Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
+
+    .EXAMPLE
+    'myComputer01', 'myComputer02' | Register-HostVolumes
+
+    Set to online all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
+
+    .EXAMPLE
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
+    $prod | Register-HostVolumes
+
+    Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
 
     [CmdletBinding(SupportsShouldProcess)]
     Param (
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    Update-HostStorageCache @PSBoundParameters
-    $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | where OperationalStatus -ne "Other"
-
-    foreach ($disk in $disks) {
-        if ($disk.IsReadOnly -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Remove read-only attribute")) {
-            $disk | Set-Disk -IsReadOnly $false @PSBoundParameters
+    process {
+        $params = @{}
+        if ($PSBoundParameters.ContainsKey('CimSession')) {
+            $params.Add('CimSession', $CimSession)
         }
 
-        if ($disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Set disk online")) {
-            $disk | Set-Disk -IsOffline $false @PSBoundParameters
+        Update-HostStorageCache @params
+        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | where {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
+
+        foreach ($disk in $disks) {
+            $label = if ($disk.PSComputerName) {" on $($disk.PSComputerName)"}
+            if ($disk.IsReadOnly -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)$label", 'Remove read-only attribute')) {
+                $disk | Set-Disk -IsReadOnly $false @params
+            }
+
+            if ($disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)$label", 'Set disk online')) {
+                $disk | Set-Disk -IsOffline $false @params
+            }
         }
     }
 }
@@ -730,7 +890,7 @@ function Set-MPIODiskLBPolicy() {
     .INPUTS
     None
     .OUTPUTS
-    None
+    mpclaim.exe output.
     .EXAMPLE
     Set-MPIODiskLBPolicy -Policy LQD
 
@@ -741,9 +901,11 @@ function Set-MPIODiskLBPolicy() {
 
     Clears the current MPIO policy for all Pure disks and sets to the default of RR.
     #>
+
     [CmdletBinding()]
     Param (
-        [Parameter(Mandatory)][MPIODiskLBPolicy]$Policy
+        [Parameter(Mandatory)]
+        [MPIODiskLBPolicy]$Policy
     )
 
     #Checks whether mpclaim.exe is available.
@@ -753,15 +915,13 @@ function Set-MPIODiskLBPolicy() {
     }
 
     Write-Host "Setting MPIO Load Balancing Policy to $([int]$Policy) for all Pure FlashArray disks."
-    $puredisks = Get-PhysicalDisk | Where-Object FriendlyName -Match 'PURE'
-    $puredisks | ForEach-Object {
-        # Get disk uniqueid
-        $UniqueID = $_.UniqueId
-        $MPIODisk = (Get-CimInstance -Namespace root\wmi -Class MPIO_DISK_INFO).driveinfo | Where-Object { $_.SerialNumber -eq $UniqueID }
-        $MPIODiskID = $MPIODisk.Name.Replace('MPIO Disk', '')
-        $MPIODiskID
-        mpclaim.exe  -l -d $MPIODiskID [int]$Policy
+
+    $drives = (Get-CimInstance -Namespace 'root\wmi' -Class 'mpio_disk_info').DriveInfo
+    Get-PhysicalDisk -FriendlyName 'PURE FlashArray*' | foreach {
+        $id = $drives | where SerialNumber -eq $_.UniqueId | foreach { $_.Name.Substring('MPIO Disk'.Length) }
+        mpclaim.exe -l -d $id $([int]$Policy)
     }
+
     Write-Host 'New disk LB policy settings:' -ForegroundColor Green
     mpclaim.exe -s -d
 }
@@ -1087,41 +1247,57 @@ function Set-WindowsPowerScheme() {
     .EXAMPLE
     Set-WindowsPowerScheme
 
-    Retrieves the current Power Scheme setting, and if not set to High Performance, asks for confirmation to set it.
+    Retrieves the current Power Scheme setting, and if not set to High Performance, sets it to active.
+
     .EXAMPLE
     $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
     Set-WindowsPowerScheme -Session $pssession
 
-    Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, asks for confirmation to set it.
+    Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
+
+    .EXAMPLE
+    $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
+    $pssession | Set-WindowsPowerScheme
+
+    Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
+
+    .EXAMPLE
+    $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; Session = $pssession}
+    $prod | Set-WindowsPowerScheme
+
+    Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
     #>
 
     [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter()]
         [guid]$PlanId = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c",
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [System.Management.Automation.Runspaces.PSSession]$Session
     )
 
-    $params = @{}
-    if ($PSBoundParameters.ContainsKey('Session')) {
-        $params.Add('Session', $Session)
-    }
-
-    Invoke-Command {
-        [CmdletBinding(SupportsShouldProcess)]
-        Param ($p, $c, $w)
-
-        $ConfirmPreference = $c
-        $WhatIfPreference = $w
-
-        $scheme = Get-CimInstance -Class 'Win32_PowerPlan' -Namespace 'root\cimv2\power' -Filter 'isActive=True'
-        if ($scheme.InstanceID -ne "Microsoft:PowerPlan\{$p}") {
-            if ($PSCmdlet.ShouldProcess("power scheme $p", 'set active')) {
-                powercfg /setactive $p
-            }
+    process {
+        $params = @{}
+        if ($PSBoundParameters.ContainsKey('Session')) {
+            $params.Add('Session', $Session)
         }
-    } -ArgumentList @($PlanId, $ConfirmPreference, $WhatIfPreference) @params
+
+        Invoke-Command {
+            [CmdletBinding(SupportsShouldProcess)]
+            Param ($p, $c, $w)
+
+            $ConfirmPreference = $c
+            $WhatIfPreference = $w
+
+            $scheme = Get-CimInstance -Class 'Win32_PowerPlan' -Namespace 'root\cimv2\power' -Filter 'isActive=True'
+            if ($scheme.InstanceID -ne "Microsoft:PowerPlan\{$p}") {
+                if ($PSCmdlet.ShouldProcess("power scheme $p on $($env:COMPUTERNAME)", 'set active')) {
+                    powercfg.exe /setactive $p
+                }
+            }
+        } -ArgumentList @($PlanId, $ConfirmPreference, $WhatIfPreference) @params
+    }
 }
 
 function Test-WindowsBestPractices() {
@@ -1131,10 +1307,12 @@ function Test-WindowsBestPractices() {
     .DESCRIPTION
     This cmdlet will retrieve the curretn host infromation, and iterate through several tests around MPIO (FC) and iSCSI OS settings and hardware, indicate whether they are adhearing to Pure Storage FlashArray Best Practices, and offer to alter the settings if applicable.
     All tests can be bypassed with a negative user response when prompted, or simply by using Ctrl-C to break the process.
-    .PARAMETER EnableIscsiTests
+    .PARAMETER Repair
+    Optional. If this parameter is present, the cmdlet will repair settings to their recommended values.
+    .PARAMETER IncludeIscsi
     Optional. If this parameter is present, the cmdlet will run tests for iSCSI settings.
-    .PARAMETER OutFile
-    Optional. Specify the full filepath (ex. c:\mylog.log) for logging. If not specified, the default file of %TMP%\Test-WindowsBestPractices.log will be used.
+    .PARAMETER LogFilePath
+    Optional. Specify the full filepath (ex. c:\mylog.log) for logging. If not specified, the default file of %TMP%\BestPractices.log will be used.
     .INPUTS
     Optional parameter for iSCSI testing.
     .OUTPUTS
@@ -1142,12 +1320,17 @@ function Test-WindowsBestPractices() {
     .EXAMPLE
     Test-WindowsBestPractices
 
-    Run the cmdlet against the local machine running the MPIO tests and the log is located in the %TMP%\Test-WindowsBestPractices.log file.
+    Run the cmdlet against the local machine running the MPIO tests and the log is located in the %TMP%\BestPractices.log file.
 
     .EXAMPLE
-    Test-WindowsZBestPractices -EnableIscsiTests -OutFile "c:\temp\mylog.log"
+    Test-WindowsBestPractices -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
 
     Run the cmdlet against the local machine, run the additional iSCSI tests, and create the log file at c:\temp\mylog.log.
+
+    .EXAMPLE
+    Test-WindowsBestPractices -Repair -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
+
+    Run the cmdlet against the local machine, run the additional iSCSI tests, repair settings to their recommended values, and create the log file at c:\temp\mylog.log.
     #>
 
     [CmdletBinding(SupportsShouldProcess)]
@@ -1385,44 +1568,75 @@ function Unregister-HostVolumes() {
     .EXAMPLE
     Unregister-HostVolumes -CimSession 'myComputer'
 
-    Set to offline all Pure FlashArray connected to 'myConputer' with current credentials.
+    Set to offline all Pure FlashArray disks connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
     Unregister-HostVolumes -CimSession $session
     Get-HostBusAdapter -CimSession $session
 
-    Set to offline all Pure FlashArray connected to 'myConputer' and gets host bus adapter 
+    Set to offline all Pure FlashArray disks connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
     Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
-    Set to offline all Pure FlashArray connected to 'myConputer' with credentials stored in variable $Creds.
+    Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
     Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
-    Set to offline all Pure FlashArray connected to 'myConputer' with credentials stored in a secret vault.
+    Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
     Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
-    Set to offline all Pure FlashArray connected to 'myConputer'. Asks for credentials.
+    Set to offline all Pure FlashArray disks connected to 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    'myComputer' | Unregister-HostVolumes
+
+    Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Unregister-HostVolumes
+
+    Set to offline all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
+
+    .EXAMPLE
+    'myComputer01', 'myComputer02' | Unregister-HostVolumes
+
+    Set to offline all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
+
+    .EXAMPLE
+    $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
+    $prod | Unregister-HostVolumes
+
+    Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
 
     [CmdletBinding(SupportsShouldProcess)]
     Param (
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    Update-HostStorageCache @PSBoundParameters
-    $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | where OperationalStatus -ne "Other"
+    process {
+        $params = @{}
+        if ($PSBoundParameters.ContainsKey('CimSession')) {
+            $params.Add('CimSession', $CimSession)
+        }
 
-    ForEach ($disk in $disks) {
-        if (!$disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)", "Set disk offline")) {
-            $disk | Set-Disk -IsOffline $true @PSBoundParameters
+        Update-HostStorageCache @params
+        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | where {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
+
+        foreach ($disk in $disks) {
+            $label = if ($disk.PSComputerName) {" on $($disk.PSComputerName)"}
+            if (!$disk.IsOffline -and $PSCmdlet.ShouldProcess("Disk $($disk.Number)$label", 'Set disk offline')) {
+                $disk | Set-Disk -IsOffline $true @params
+            }
         }
     }
 }
@@ -1430,49 +1644,100 @@ function Unregister-HostVolumes() {
 function Update-DriveInformation() {
     <#
     .SYNOPSIS
-    Updates drive letters and assigns a label.
+    Updates drive letter and assigns a label.
     .DESCRIPTION
-    Thsi cmdlet will update the current drive letter to the new drive letter, and assign a new drive label if specified.
+    Thsi cmdlet will update the current drive letter to the new drive letter, and assign a new file system label if specified.
+    .PARAMETER DriveLetter
+    Required. Specifies the drive letter of the partition to modify.
     .PARAMETER NewDriveLetter
-    Required. Drive lettwre without the colon.
-    .PARAMETER CurrentDriveLetter
-    Required. Drive lettwre without the colon.
-    .PARAMETER NewDriveLabel
-    Optional. Drive label text. Defaults to "NewDrive".
+    Required. Specifies the new drive letter for the partition.
+    .PARAMETER NewFileSystemLabel
+    Optional. Specifies a new file system label to use.
     .PARAMETER CimSession
-    Optional. A CimSession or computer name.
+    Optional. A CimSession or computer name. CIM session may be reused.
     .INPUTS
-    None
+    CimSession is optional.
     .OUTPUTS
     None
     .EXAMPLE
-    Update-DriveInformation -NewDriveLetter S -CurrentDriveLetter M
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S
 
-    Updates the drive letter from M: to S: and labels S: to NewDrive.
+    Updates the drive letter from M to S.
+
+    .EXAMPLE
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -NewFileSystemLabel Test
+
+    Updates the drive letter from M to S and changes the file system label to Test.
+
+    .EXAMPLE
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession 'myComputer'
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with current credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession $session
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with previously created CIM session.
+
+    .EXAMPLE
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with credentials stored in variable $Creds.
+
+    .EXAMPLE
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with credentials stored in a secret vault.
+
+    .EXAMPLE
+    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer'. Asks for credentials.
+
+    .EXAMPLE
+    $session = New-CimSession 'myComputer' -Credential (Get-Credential)
+    $session | Update-DriveInformation -DriveLetter M -NewDriveLetter S
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with previously created CIM session.
+
+    .EXAMPLE
+    $dev = [pscustomobject]@{Caption = 'Dev Server'; CimSession = 'myComputer'}
+    $dev | Update-DriveInformation -DriveLetter M -NewDriveLetter S
+
+    Updates the drive letter from M to S. Update is performed on 'myComputer' with current credentials.
     #>
+
     [CmdletBinding(SupportsShouldProcess)]
     Param (
-        [Parameter(Mandatory = $True)][string]$NewDriveLetter,
-        [Parameter(Mandatory = $True)][string]$CurrentDriveLetter,
-        [Parameter(Mandatory = $False)][string]$NewDriveLabel = 'NewDrive',
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [char]$DriveLetter,
+        [Parameter(Mandatory)]
+        [ValidateNotNullorEmpty()]
+        [char]$NewDriveLetter,
+        [string]$NewFileSystemLabel,
         [Parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNull()]
         [CimSession]$CimSession
     )
 
-    $params = @{
-        Query    = "SELECT * FROM Win32_Volume WHERE DriveLetter = '$CurrentDriveLetter`:'"
-        Property = @{ DriveLetter = "$($NewDriveLetter):" }
-    }
+    process {
+        $params = @{
+            Query    = "SELECT * FROM Win32_Volume WHERE DriveLetter = '$DriveLetter`:'"
+            Property = @{ DriveLetter = "$NewDriveLetter`:" }
+        }
 
-    if ($NewDriveLabel) {
-        $params.Property.Add('Label', $NewDriveLabel)
-    }
+        if ($PSBoundParameters.ContainsKey('NewFileSystemLabel')) {
+            $params.Property.Add('Label', $NewFileSystemLabel)
+        }
 
-    if ($PSBoundParameters.ContainsKey('CimSession')) {
-        $params.Add('CimSession', $CimSession)
-    }
+        if ($PSBoundParameters.ContainsKey('CimSession')) {
+            $params.Add('CimSession', $CimSession)
+        }
 
-    Set-CimInstance @params | Out-Null
+        Set-CimInstance @params | Out-Null
+    }
 }
 
 # Declare exports
