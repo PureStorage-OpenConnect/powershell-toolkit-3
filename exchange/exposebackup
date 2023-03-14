@@ -1,11 +1,11 @@
-Function New-VSSExposeBackup{
+Function Enter-VSSExposeBackupSession {
     <#
     .SYNOPSIS
     Expose a VSS Snapshot of an Exchange Database on Pure Flash Array to mount point(s).
     
     .DESCRIPTION
     Expose a VSS snapshot to a mount point(s) in c:\program files\pure storage\vss\exchange\<DB name>\mp1|mp2.
-    After exposing, pause script. Manual manipulation of files, such as robocopy, then press ENTER to continue the script.
+    After exposing, pause script. Manual manipulation of files, such as robocopy, then type 'exit' and press ENTER to continue the script.
     The script will then unexpose the volume(s) and end.
 
     This function will fail on a VM, unless the in-guest Microsoft iSCSI initiator is used to connect to the FlashArray and the force flag.
@@ -15,63 +15,92 @@ Function New-VSSExposeBackup{
     . ./PureExchangeWrapper.psm1
         
     Expose Database DB1
-    New-VSSExposeBackup -DBName DB1
+    Enter-VSSExposeBackupSession -DBName DB1
 
     Expose Database DB2 on a VM with in-guest iSCSI
-    New-VSSExposeBackup -DBName DB2 -Force $true
+    Enter-VSSExposeBackupSession -DBName DB2 -Force
     #>
-    Param(
-        [Parameter(ParameterSetName="expose", Mandatory=$true)]
-        [parameter(Position=0)]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Position = 0)]
         [string]$DBName,
-        [Parameter(ParameterSetName="expose", Mandatory=$false)]
-        [parameter(Position=1)]
-        [bool]$Force = $false
+        [Parameter(Mandatory = $false)]
+        [Parameter(Position = 1)]
+        [switch]$Force,
+        [Parameter(ParameterSetName='ScriptBlock')]
+        [scriptblock]$ScriptBlock
     )
    
-    Process{
-	$script:pc = get-wmiobject -class win32_computersystem
-	$VMorNot = ($pc.model.StartsWith("VMware")) -or ($pc.model.startswith("Virtual"))
+    process {
+        $script:pc = Get-CimInstance -Class Win32_ComputerSystem
+        $isVm = $pc.Model.StartsWith('VMware') -or $pc.Model.StartsWith('Virtual')
 
-        if ( ($VMorNot -eq $false)  -or (($VMorNot -eq $true) -and ($Force -eq $true)) ) {
-            Write-Host -ForeGroundColor white "Exposing snapshot to mount points under c:\program files\pure storage\vss\exchange\"$DBName"\mp1"
-            Write-Host -ForeGroundColor white "If logs are on a separate volume, they are exposed on mp2"
-            Write-Host -ForeGroundColor white "This will fail if files or subdirectories have been created under the mp1/mp2 folders"
-            
-            $CabFile = @(Get-ChildItem "c:\program files\pure storage\vss\exchange\$DBName" | Out-GridView -title 'Choose a CAB file' -passthru)
-            $CabName = $CabFile.FullName #full path and file Name
-        
-            #   Get the database log and edb file path
-            $LogPath = Get-MailboxDatabase -id $DBName | Select-Object logfolderpath
-            $DBPath = Get-MailboxDatabase -id $DBName | Select-Object edbfilepath
-        
-            #   Grab disk path to pass to diskshadow
-            $Disk1 = Get-Volume -filepath $DBPath.edbfilepath | Select-Object -expandproperty path
-            $Disk2 = Get-Volume -filepath $LogPath.logfolderpath | Select-Object -expandproperty path
-               
-            New-Item -ItemType Directory -Path "C:\Program Files\pure storage\vss\exchange\$DBName\mp1" -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Path "C:\Program Files\pure storage\vss\exchange\$DBName\mp2" -ErrorAction SilentlyContinue
-            $CabExcludeSuffix = [io.path]::GetFileNameWithoutExtension($CabFile)
-            $script = "./tmp.dsh"
-            "Load metadata ""$CabName""" | Add-Content $script
-            "IMPORT" | Add-Content $script
-            'expose %'+$CabExcludeSuffix+'_01% "c:\program files\pure storage\vss\exchange\'+$DBName+'\mp1"' | Add-Content $script
-            if ($Disk1[0] -ne $Disk2[0]) {'expose %'+$CabExcludeSuffix+'_02% "c:\program files\pure storage\vss\exchange\'+$DBName+'\mp2"' | Add-Content $script }
-            diskshadow /s $script
-            remove-item $script
-
-            Read-Host -Prompt "Press Enter to continue after copying files from the exposed backup Volume(s) to cleanup and unexpose the Volume(s)."
-            $script = "./tmp.dsh"
-            'unexpose "c:\program files\pure storage\vss\exchange\'+$DBName+'\mp1"' | Add-Content $script
-            if ($Disk1[0] -ne $Disk2[0]) {'unexpose "c:\program files\pure storage\vss\exchange\'+$DBName+'\mp2"' | Add-Content $script }
-            diskshadow /s $script
-            remove-item $script
-
-            Write-Host -ForeGroundColor white "Exposed disk(s) have been removed. Cleanup Complete."
-        } else { 
-            Write-Host "VM detected. Expose will only work if the database is on an iSCSI Volume directly mapped through the guest initiator."
-            Write-Host "If this is the case, use:  -Force `$true"
-            Write-Host "Example: New-ExposeBackup -DBName DB1 -Force `$true"
+        if ($isVm -and -not $Force) { 
+            Write-Error @'
+VM detected. Expose will only work if the database is on an iSCSI Volume directly mapped through the guest initiator.
+If this is the case, use:  -Force
+Example: New-ExposeBackup -DBName DB1 -Force
+'@
         }
+
+        $rootPath = 'c:\program files\pure storage\vss\exchange\'
+        $dbPath = Join-path $rootPath $DBName
+        New-Variable -Name mp1 -Value (Join-Path $dbPath 'mp1') -Option ReadOnly
+        New-Variable -Name mp2 -Value (Join-Path $dbPath 'mp2') -Option ReadOnly
+        Write-Host "Exposing snapshot to mount points under $mp1"
+        Write-Host "If logs are on a separate volume, they are exposed on $mp2"
+        Write-Host 'This will fail if files or subdirectories have been created under the mp1/mp2 folders'
+        
+        $cabFile = Get-ChildItem $dbPath -File | Out-GridView -Title 'Choose a CAB file' -OutputMode Single
+        if (-not $cabFile) {
+            Write-Error "No cab file selected. Terminating."
+        }
+
+        $cabName = $cabFile.FullName #full path and file Name
+    
+        #   Get the mailbox database
+        $mailboxDb = Get-MailboxDatabase -id $DBName
+    
+        #   Grab disk path to pass to diskshadow
+        New-Variable disk1 (Get-Volume -FilePath $mailboxDb.edbfilepath).Path -Option ReadOnly
+        New-Variable disk2 (Get-Volume -FilePath $mailboxDb.logfolderpath).Path -Option ReadOnly
+        New-Variable cabExcludeSuffix [io.path]::GetFileNameWithoutExtension($cabName) -Oprion ReadOnly
+            
+        New-Item -ItemType Directory -Path $mp1 -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $mp2 -ErrorAction SilentlyContinue
+
+        $script = './tmp.dsh'
+        "Load metadata ""$cabName""",
+        'IMPORT',
+        "expose %$($cabExcludeSuffix)_01% ""$mp1""" | Set-Content $script
+        if ($disk1 -ne $disk2) { "expose %$($cabExcludeSuffix)_02% ""$mp2""" | Add-Content $script } 
+        diskshadow /s $script
+        Remove-Item $script
+
+        $cwd = Get-Location
+        
+        if ('ScriptBlock' -eq $PSCmdlet.ParameterSetName) {
+            $argList = @(
+                $DBName, $mp1
+                if ($disk1 -ne $disk2) { $mp2 }
+            )
+
+            Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList $argList
+
+        } else {
+            function prompt {  "Enter 'exit' command to continue after copying files from the exposed backup Volume(s) to cleanup and unexpose the Volume(s).`n$(Get-Location) > " }
+            $HOST.EnterNestedPrompt();
+        }
+
+        Set-Location $cwd
+
+        $script = './tmp.dsh'
+        "unexpose %$($cabExcludeSuffix)_01% ""$mp1""" | Set-Content $script
+        if ($disk1 -ne $disk2) { "unexpose %$($cabExcludeSuffix)_02% ""$mp2""" | Add-Content $script } 
+        diskshadow /s $script
+        Remove-Item $script
+
+        Write-Host 'Exposed disk(s) have been removed. Cleanup Complete.'
     }
 }#END New-VSSExposeBackup{}

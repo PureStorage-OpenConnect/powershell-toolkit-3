@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Types>
+  <Type>
+    <Name>ExchBackup</Name>
+    <Members>
+      <ScriptProperty>
+        <Name>LastWriteTime</Name>
+        <GetScriptBlock>($this._file.LastWriteTime)</GetScriptBlock>
+      </ScriptProperty>
+    </Members>
+  </Type>
+</Types>
