@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Types>
   <Type>
-    <Name>ExchBackup</Name>
+    <Name>ExchangeBackup</Name>
     <Members>
       <ScriptProperty>
         <Name>LastWriteTime</Name>
         <GetScriptBlock>($this._file.LastWriteTime)</GetScriptBlock>
+      </ScriptProperty>
+      <ScriptProperty>
+        <Name>Path</Name>
+        <GetScriptBlock>($this._file.FullName)</GetScriptBlock>
       </ScriptProperty>
     </Members>
   </Type>

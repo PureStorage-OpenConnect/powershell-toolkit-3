@@ -7,7 +7,7 @@
         <PropertyName>DatabaseName</PropertyName>
       </GroupBy>
       <ViewSelectedBy>
-        <TypeName>ExchBackup</TypeName>
+        <TypeName>ExchangeBackup</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -24,7 +24,7 @@
             <Width>26</Width>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>SerialNumber</Label>
+            <Label>Orig. SerialNumber</Label>
             <Width>32</Width>
           </TableColumnHeader>
           <TableColumnHeader>
