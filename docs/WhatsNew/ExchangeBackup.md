@@ -2,16 +2,26 @@
 
 The following cmdlets manage Exchange server backups.
 
-## Enter-ExchBackupExposeSession
+## Get-ExchangeBackup, Restore-ExchangeBackup, New-ExchangeBackup, Remove-ExchangeBackup
+
+These functions implement basic backup operations. See help for more information.
+
+## Mount-ExchangeBackup, Dismount-ExchangeBackup
+
+These functions help to expose Exchange backups as file system entries. See help for details and examples.
+
+## Enter-ExchangeBackupExposeSession
+
+This cmdlet wraps a script or manual operations with `Mount-ExchangeBackup` and `Dismount-ExchangeBackup`.
 
 ### Manual operation
 
 This script exposes an Exchange backup as a file system directory, then pauses execution to let the manipulate the files. After the user types `exit`, the script continues and removes the mapping of backup into the file system.
 
-The following example the user gets the latest backup for database named 'single' and invokes `Enter-ExchBackupExposeSession`. The cmdlet maps the backup into the file system and creates a nested prompt. The message above the prompt is a reminder of temporarily mapped backup.
+The following example the user gets the latest backup for database named 'single' and invokes `Enter-ExchangeBackupExposeSession`. The cmdlet maps the backup into the file system and creates a nested prompt. The message above the prompt is a reminder of temporarily mapped backup.
 
 ```PowerShell
-PS C:\Users\administrator.QEXCHANGE> Get-ExchBackup -DatabaseName 'single' -Latest 1 | Enter-ExchBackupExposeSession
+PS C:\Users\administrator.QEXCHANGE> Get-ExchangeBackup -DatabaseName 'single' -Latest 1 | Enter-ExchangeBackupExposeSession
 # Type 'exit' to end the expose session, cleanup and unexpose the shadow copy.
 [single]: PS C:\Program Files\Pure Storage\VSS\Exchange\single\03_14_2023__22_27_55>
 ```
@@ -66,8 +76,8 @@ PS C:\Users\administrator.QEXCHANGE>
 
 ### Script automation
 
-The `Enter-ExchBackupExposeSession` cmdlet accepts an optional script block. When the block is present the cmdlet does not create a nested prompt. It runs the script instead of manual operation. This allows manipulating the backup files with a PowerShell script.
+The `Enter-ExchangeBackupExposeSession` cmdlet accepts an optional script block. When the block is present the cmdlet does not create a nested prompt. It runs the script instead of manual operation. This allows manipulating the backup files with a PowerShell script.
 
 ```powershell
-PS C:\Users\administrator.QEXCHANGE> Get-ExchBackup -DatabaseName 'single' -Latest 1 | Enter-ExchBackupExposeSession -ScriptBlock { Remove-Item .\db\exchange_single_db\*.log }
+PS C:\Users\administrator.QEXCHANGE> Get-ExchangeBackup -DatabaseName 'single' -Latest 1 | Enter-ExchangeBackupExposeSession -ScriptBlock { Remove-Item .\db\exchange_single_db\*.log }
 ```
