@@ -3,7 +3,7 @@
     Created by:   	FlashArray Integrations and Evangelism Team @ Pure Storage
     Organization: 	Pure Storage, Inc.
     Filename:     	PureStoragePowerShellToolkit.Reporting.psd1
-    Copyright:		(c) 2022 Pure Storage, Inc.
+    Copyright:		(c) 2023 Pure Storage, Inc.
     Module Name: 	PureStoragePowerShellToolkit.Reporting
     Description: 	PowerShell Script Module Manifest (.psd1)
     -------------------------------------------------------------------------
@@ -29,7 +29,7 @@ RootModule = 'PureStoragePowerShellToolkit.Reporting.psm1'
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.2'
+ModuleVersion = '3.0.0.3'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
@@ -44,7 +44,7 @@ Author = 'Pure Storage'
 CompanyName = 'Pure Storage, Inc.'
 
 # Copyright statement for this module
-Copyright = '(c) 2022 Pure Storage, Inc. All rights reserved.'
+Copyright = '(c) 2023 Pure Storage, Inc. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'PowerShell Toolkit for Pure Storage Flasharray and Initiators.'
@@ -69,8 +69,14 @@ ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
-    'PureStoragePowerShellToolkit.FlashArray',
-    'ImportExcel'
+    @{
+        ModuleName = 'PureStoragePowerShellToolkit.FlashArray';
+        ModuleVersion = '3.0.0.3'
+    },
+    @{
+        ModuleName = 'ImportExcel';
+        ModuleVersion = '7.8.4'
+    }
 )
 
 # Assemblies that must be loaded prior to importing this module

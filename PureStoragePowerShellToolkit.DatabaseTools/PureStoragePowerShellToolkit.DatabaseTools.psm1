@@ -1,12 +1,12 @@
 <#
     ===========================================================================
-    Release version: 3.0.0.1
+    Release version: 3.0.0
     Revision information: Refer to the changelog.md file
     ---------------------------------------------------------------------------
     Maintained by:   FlashArray Integrations and Evangelsigm Team @ Pure Storage
     Organization:    Pure Storage, Inc.
     Filename:        PureStoragePowerShellToolkit.DatabaseTools.psm1
-    Copyright:       (c) 2022 Pure Storage, Inc.
+    Copyright:       (c) 2023 Pure Storage, Inc.
     Module Name:     PureStoragePowerShellToolkit.DatabaseTools.Dba
     Description:     PowerShell Script Module (.psm1)
     --------------------------------------------------------------------------
@@ -20,8 +20,8 @@
 #>
 
 #Requires -Version 5
-#Requires -Modules 'PureStoragePowerShellToolkit.FlashArray'
-#Requires -Modules @{ ModuleName="dbatools"; ModuleVersion="1.1" }
+#Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.0.3' }
+#Requires -Modules @{ ModuleName="dbatools"; ModuleVersion="1.1.145" }
 
 #region Helper functions
 
@@ -162,59 +162,59 @@ Applies data masks to database columns using the SQL Server dynamic data masking
 .NOTES
 Note that it has dependencies on the dbatools module which is installed with this module.
 #>
-	[CmdletBinding()]
+    [CmdletBinding()]
     param(
         [parameter(mandatory = $true)][Sqlcollaborative.Dbatools.Parameter.DbaInstanceParameter] $SqlInstance,
         [parameter(mandatory = $true)][string] $Database,
-		[parameter(mandatory = $false)][pscredential] $SqlCredential
+        [parameter(mandatory = $false)][pscredential] $SqlCredential
     )
 
     $sql = @"
 BEGIN
-	DECLARE  @sql_statement nvarchar(1024)
-	        ,@error_message varchar(1024)
+    DECLARE  @sql_statement nvarchar(1024)
+            ,@error_message varchar(1024)
 
-	DECLARE apply_data_masks CURSOR FOR
-	SELECT       'ALTER TABLE ' + tb.name + ' ALTER COLUMN ' + c.name +
-			   + ' ADD MASKED WITH '
-			   + CAST(p.value AS char) + ''')'
-	FROM       sys.columns c
-	JOIN       sys.types t
-	ON         c.user_type_id = t.user_type_id
-	LEFT JOIN  sys.index_columns ic
-	ON         ic.object_id = c.object_id
-	AND        ic.column_id = c.column_id
-	LEFT JOIN  sys.indexes i
-	ON         ic.object_id = i.object_id
-	AND        ic.index_id  = i.index_id
-	JOIN       sys.tables tb
-	ON         tb.object_id = c.object_id
-	JOIN       sys.extended_properties AS p
-	ON         p.major_id   = tb.object_id
-	AND        p.minor_id   = c.column_id
-	AND        p.class      = 1
-	WHERE      t.name IN ('int', 'bigint', 'char', 'nchar', 'varchar', 'nvarchar');
+    DECLARE apply_data_masks CURSOR FOR
+    SELECT       'ALTER TABLE ' + tb.name + ' ALTER COLUMN ' + c.name +
+               + ' ADD MASKED WITH '
+               + CAST(p.value AS char) + ''')'
+    FROM       sys.columns c
+    JOIN       sys.types t
+    ON         c.user_type_id = t.user_type_id
+    LEFT JOIN  sys.index_columns ic
+    ON         ic.object_id = c.object_id
+    AND        ic.column_id = c.column_id
+    LEFT JOIN  sys.indexes i
+    ON         ic.object_id = i.object_id
+    AND        ic.index_id  = i.index_id
+    JOIN       sys.tables tb
+    ON         tb.object_id = c.object_id
+    JOIN       sys.extended_properties AS p
+    ON         p.major_id   = tb.object_id
+    AND        p.minor_id   = c.column_id
+    AND        p.class      = 1
+    WHERE      t.name IN ('int', 'bigint', 'char', 'nchar', 'varchar', 'nvarchar');
 
-	OPEN apply_data_masks
-	FETCH NEXT FROM apply_data_masks INTO @sql_statement;
+    OPEN apply_data_masks
+    FETCH NEXT FROM apply_data_masks INTO @sql_statement;
 
-	WHILE @@FETCH_STATUS = 0
-	BEGIN
-	    PRINT 'Applying data mask: ' + @sql_statement;
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        PRINT 'Applying data mask: ' + @sql_statement;
 
-		BEGIN TRY
-		    EXEC sp_executesql @stmt = @sql_statement
-		END TRY
-		BEGIN CATCH
-		    SELECT @error_message = ERROR_MESSAGE();
-			PRINT 'Application of data mask failed with: ' + @error_message;
-		END CATCH;
+        BEGIN TRY
+            EXEC sp_executesql @stmt = @sql_statement
+        END TRY
+        BEGIN CATCH
+            SELECT @error_message = ERROR_MESSAGE();
+            PRINT 'Application of data mask failed with: ' + @error_message;
+        END CATCH;
 
-		FETCH NEXT FROM apply_data_masks INTO @sql_statement
-	END;
+        FETCH NEXT FROM apply_data_masks INTO @sql_statement
+    END;
 
-	CLOSE apply_data_masks
-	DEALLOCATE apply_data_masks;
+    CLOSE apply_data_masks
+    DEALLOCATE apply_data_masks;
 END;
 "@
 

@@ -1,12 +1,12 @@
 <#
     ===========================================================================
-    Release version: 3.0.0.1
+    Release version: 3.0.0
     Revision information: Refer to the changelog.md file
     ---------------------------------------------------------------------------
     Maintained by:   FlashArray Integrations and Evangelsigm Team @ Pure Storage
     Organization:    Pure Storage, Inc.
     Filename:        PureStoragePowerShellToolkit.WindowsAdministration.psm1
-    Copyright:       (c) 2022 Pure Storage, Inc.
+    Copyright:       (c) 2023 Pure Storage, Inc.
     Module Name:     PureStoragePowerShellToolkit.WindowsAdministration
     Description:     PowerShell Script Module (.psm1)
     --------------------------------------------------------------------------
