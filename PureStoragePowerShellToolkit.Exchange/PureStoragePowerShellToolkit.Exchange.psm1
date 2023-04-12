@@ -250,7 +250,7 @@ function Get-ExchVolume() {
         throw "Volume '$path' not found."
     }
 
-    $disk = $volume | Get-Partition | Get-Disk | ? FriendlyName -like 'PURE*'
+    $disk = $volume | Get-Partition | Get-Disk | Where-Object FriendlyName -like 'PURE*'
     if (-not $disk) {
         throw "PURE Disk '$path' not found."
     }
@@ -298,7 +298,7 @@ function Test-BusType() {
     [CmdletBinding()]
     param([string[]]$busType)
     
-    -not @($busType | ? { $script:supportedBusTypes -notcontains $_ }).Count
+    -not @($busType | Where-Object { $script:supportedBusTypes -notcontains $_ }).Count
 }
 
 function Dismount-ExchangeBackup() {
@@ -618,7 +618,7 @@ function Get-ExchangeBackup() {
             (Get-ChildItem $root -Directory).Name
         }
 
-        foreach ($db_name in ($databases | sort -Unique)) {
+        foreach ($db_name in ($databases | Sort-Object -Unique)) {
             $db_path = Join-Path $root $db_name
             if (-not (Test-Path $db_path)) {
                 throw "Database '$db_name' not found."
@@ -638,13 +638,13 @@ function Get-ExchangeBackup() {
                 [ExchangeBackup]::new($_, $db)
             }
             if ($After) {
-                $backups = $backups | ? BackupDate -gt $After
+                $backups = $backups | Where-Object BackupDate -gt $After
             }
             if ($Before) {
-                $backups = $backups | ? BackupDate -lt $Before
+                $backups = $backups | Where-Object BackupDate -lt $Before
             }
             if ($Latest) {
-                $backups = $backups | sort BackupDate -Descending | select -First $Latest
+                $backups = $backups | Sort-Object BackupDate -Descending | Select-Object -First $Latest
             }
             $backups
         }
@@ -984,9 +984,9 @@ function Remove-ExchangeBackup() {
                 $backups = [ExchangeBackup]::new($cab_file, $null)
             }
             else {
-                $backups = Get-ChildItem $db_path -File -Filter "*.cab" | % {
+                $backups = Get-ChildItem $db_path -File -Filter "*.cab" | ForEach-Object {
                     [ExchangeBackup]::new($_, $null)
-                } | sort BackupDate | select -SkipLast $Retain
+                } | Sort-Object BackupDate | Select-Object -SkipLast $Retain
             }
 
             foreach ($backup in $backups){

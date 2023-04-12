@@ -189,7 +189,7 @@ function Get-FlashArraySerialNumbers() {
     )
 
     process {
-        Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | select PSComputerName, Number, SerialNumber
+        Get-Disk -FriendlyName 'PURE FlashArray*' @PSBoundParameters | Select-Object PSComputerName, Number, SerialNumber
     }
 }
 
@@ -271,7 +271,7 @@ function Get-HostBusAdapter() {
     process {
 
         function ConvertTo-HexAndColons([byte[]]$address) {
-            return (($address | foreach { '{0:x2}' -f $_ }) -join ':').ToUpper()
+            return (($address | ForEach-Object { '{0:x2}' -f $_ }) -join ':').ToUpper()
         }
 
         try {
@@ -281,7 +281,7 @@ function Get-HostBusAdapter() {
             foreach ($adapter in $adapters) {
                 $attributes = $ports.Where({ $_.InstanceName -eq $adapter.InstanceName }, 'first').Attributes
 
-                $adapter | select -ExcludeProperty 'NodeWWN', 'Cim*' -Property *, 
+                $adapter | Select-Object -ExcludeProperty 'NodeWWN', 'Cim*' -Property *, 
                 @{n = 'NodeWWN'; e = { ConvertTo-HexAndColons $_.NodeWWN } }, 
                 @{n = 'FabricName'; e = { ConvertTo-HexAndColons $attributes.FabricName } }, 
                 @{n = 'PortWWN'; e = { ConvertTo-HexAndColons $attributes.PortWWN } }
@@ -433,7 +433,7 @@ function Get-QuickFixEngineering() {
     )
 
     process {
-        Get-CimInstance -Class 'Win32_QuickFixEngineering' @PSBoundParameters | select PSComputerName, Description, HotFixID, InstalledOn
+        Get-CimInstance -Class 'Win32_QuickFixEngineering' @PSBoundParameters | Select-Object PSComputerName, Description, HotFixID, InstalledOn
     }
 }
 
@@ -587,7 +587,7 @@ function Get-WindowsDiagnosticInfo() {
                     }
                 )
 
-                $keys | where { Join-Path $root $_.service | Test-Path } | foreach { Join-Path $root $_.key | Get-ItemProperty | Out-File $_.file }
+                $keys | Where-Object { Join-Path $root $_.service | Test-Path } | ForEach-Object { Join-Path $root $_.key | Get-ItemProperty | Out-File $_.file }
             } | Get-Diagnostic -header 'MPIO information'
 
             # Fibre Channel
@@ -611,22 +611,22 @@ function Get-WindowsDiagnosticInfo() {
 
             # Export
             {
-                $logs | foreach { wevtutil epl $_ "$_.evtx" /ow }
+                $logs | ForEach-Object { wevtutil epl $_ "$_.evtx" /ow }
             } | Get-Diagnostic -header 'event log files'
 
             # Locale-specific messages
             {
-                $logs | foreach { wevtutil al "$_.evtx" }
+                $logs | ForEach-Object { wevtutil al "$_.evtx" }
             } | Get-Diagnostic -header 'locale-specific information'
 
             #Get critical, error, & warning events
             {
-                $logs | foreach { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 1, 2, 3 } -ea SilentlyContinue | Export-Csv "$_-CRITICAL.csv" -NoTypeInformation }
+                $logs | ForEach-Object { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 1, 2, 3 } -ea SilentlyContinue | Export-Csv "$_-CRITICAL.csv" -NoTypeInformation }
             } | Get-Diagnostic -header 'critical, error, & warning events'
 
             # Get informational events
             {
-                $logs | foreach { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 4 } -ea SilentlyContinue | Export-Csv "$_-INFO.csv" -NoTypeInformation }
+                $logs | ForEach-Object { Get-WinEvent -FilterHashtable @{LogName = $_; Level = 4 } -ea SilentlyContinue | Export-Csv "$_-INFO.csv" -NoTypeInformation }
             } | Get-Diagnostic -header 'informational events'
         } | Get-Diagnostic -header 'event log' -location 'log'
 
@@ -739,7 +739,7 @@ function New-VolumeShadowCopy() {
     }
 
     process {
-        $volumes += $Volume | foreach { 
+        $volumes += $Volume | ForEach-Object { 
             "ADD VOLUME $_ ALIAS $Alias$(if ($i -gt 1) {$i}) PROVIDER {781c006a-5829-4a25-81e3-d5e43bd005ab}"
             $i++
         }
@@ -847,7 +847,7 @@ function Register-HostVolumes() {
         }
 
         Update-HostStorageCache @params
-        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | where {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
+        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | Where-Object {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
 
         foreach ($disk in $disks) {
             $label = if ($disk.PSComputerName) {" on $($disk.PSComputerName)"}
@@ -918,8 +918,8 @@ function Set-MPIODiskLBPolicy() {
     Write-Host "Setting MPIO Load Balancing Policy to $([int]$Policy) for all Pure FlashArray disks."
 
     $drives = (Get-CimInstance -Namespace 'root\wmi' -Class 'mpio_disk_info').DriveInfo
-    Get-PhysicalDisk -FriendlyName 'PURE FlashArray*' | foreach {
-        $id = $drives | where SerialNumber -eq $_.UniqueId | foreach { $_.Name.Substring('MPIO Disk'.Length) }
+    Get-PhysicalDisk -FriendlyName 'PURE FlashArray*' | ForEach-Object {
+        $id = $drives | Where-Object SerialNumber -eq $_.UniqueId | ForEach-Object { $_.Name.Substring('MPIO Disk'.Length) }
         mpclaim.exe -l -d $id $([int]$Policy)
     }
 
@@ -1220,7 +1220,7 @@ function Set-TlsVersions {
         Backup-RegistryKey -KeyPath $key -BackupFilePath $BackupFilePath -Force:$Force | Out-Null
     }
 
-    0..3 | foreach {
+    0..3 | ForEach-Object {
         $v = [Version]::new(1, $_)
         if ($v -lt $MinVersion) {
             Disable-SecureChannelProtocol "TLS $v"
@@ -1631,7 +1631,7 @@ function Unregister-HostVolumes() {
         }
 
         Update-HostStorageCache @params
-        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | where {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
+        $disks = Get-Disk -FriendlyName 'PURE FlashArray*' @params | Where-Object {$null -ne $_.Number -and $_.OperationalStatus -ne 'Other'}
 
         foreach ($disk in $disks) {
             $label = if ($disk.PSComputerName) {" on $($disk.PSComputerName)"}

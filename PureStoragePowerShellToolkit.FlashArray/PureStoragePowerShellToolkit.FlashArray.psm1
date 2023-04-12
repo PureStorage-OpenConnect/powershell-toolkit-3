@@ -186,8 +186,8 @@ function Get-AllHostVolumeInfo() {
 
         try {
             Get-Pfa2Connection -Array $flashArray -PipelineVariable c |
-            foreach { Get-Pfa2Volume -Array $flashArray -Name $_.Volume.Name } |
-            foreach { [pscustomobject]@{
+            ForEach-Object { Get-Pfa2Volume -Array $flashArray -Name $_.Volume.Name } |
+            ForEach-Object { [pscustomobject]@{
                     Array         = $flashArray.ArrayName
                     Host          = $c.Host.Name
                     'Volume Name' = $_.Name
@@ -393,12 +393,12 @@ function Get-FlashArrayConnectDetails() {
 
         try {
             $hosts = @{}
-            Get-Pfa2Host -Array $flashArray | foreach { $hosts.Add($_.Name, $_) }
+            Get-Pfa2Host -Array $flashArray | ForEach-Object { $hosts.Add($_.Name, $_) }
 
             $volumes = @{}
-            Get-Pfa2Volume -Array $flashArray | foreach { $volumes.Add($_.Name, $_) }
+            Get-Pfa2Volume -Array $flashArray | ForEach-Object { $volumes.Add($_.Name, $_) }
 
-            Get-Pfa2Connection -Array $flashArray -Filter "volume.name!='pure-protocol-endpoint'" | foreach {
+            Get-Pfa2Connection -Array $flashArray -Filter "volume.name!='pure-protocol-endpoint'" | ForEach-Object {
                 $purehost = $hosts[$_.Host.Name]
                 $volume = $volumes[$_.Volume.Name]
                 [pscustomobject]@{
@@ -411,7 +411,7 @@ function Get-FlashArrayConnectDetails() {
                     'Provisioned (GB)'  = Convert-UnitOfSize $volume.Provisioned -To 1GB
                     'Host Written (GB)' = Convert-UnitOfSize ($volume.Provisioned * (1 - $volume.Space.ThinProvisioning)) -To 1GB
                 }
-            } | sort 'Host Name' | Format-Table -AutoSize
+            } | Sort-Object 'Host Name' | Format-Table -AutoSize
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -494,9 +494,9 @@ function Get-FlashArrayDisconnectedVolumes() {
         try {
             $faSpace = Get-Pfa2ArraySpace -Array $flashArray
 
-            $allVolumes = @(Get-Pfa2Volume -Array $flashArray | select -Expand Name)
-            $connectedVolumes = @(Get-Pfa2Connection -Array $flashArray | select -Expand Volume | select -Expand Name -Unique)
-            $disconnectedVolumes = @($allVolumes | where { $_ -notin $connectedVolumes })
+            $allVolumes = @(Get-Pfa2Volume -Array $flashArray | Select-Object -Expand Name)
+            $connectedVolumes = @(Get-Pfa2Connection -Array $flashArray | Select-Object -Expand Volume | Select-Object -Expand Name -Unique)
+            $disconnectedVolumes = @($allVolumes | Where-Object { $_ -notin $connectedVolumes })
 
             $faTotal = Convert-UnitOfSize $faSpace.Space.TotalPhysical -To 1TB
             $faCapacity = Convert-UnitOfSize $faSpace.Capacity -To 1TB
@@ -626,8 +626,8 @@ Function Get-FlashArrayHierarchy() {
                     Write-Host "[H] $($Initiator.name)"
 
                     $Volumes = Get-Pfa2Connection -Array $FlashArray -HostNames $Initiator.name | 
-                    select -expand Volume | 
-                    where Name -ne 'pure-protocol-endpoint'
+                    Select-Object -expand Volume | 
+                    Where-Object Name -ne 'pure-protocol-endpoint'
 
                     If (!$Volumes) {
                         Write-Host '  [No volumes connected]' -ForegroundColor Yellow
@@ -672,7 +672,7 @@ Function Get-FlashArrayHierarchy() {
             }
             #If user does not want hierarchy at host level
             Else {
-                $Volumes = Get-Pfa2Volume -Array $FlashArray | where Name -ne 'pure-protocol-endpoint'
+                $Volumes = Get-Pfa2Volume -Array $FlashArray | Where-Object Name -ne 'pure-protocol-endpoint'
 
                 #Start volume level
                 ForEach ($Volume in $Volumes) {
@@ -792,13 +792,13 @@ function Get-FlashArrayPgroupsConfig() {
             $protectionGroups = Get-Pfa2ProtectionGroup -Array $flashArray
 
             $groupVolumes = @{} 
-            Get-Pfa2ProtectionGroupVolume -Array $flashArray | foreach { $groupVolumes[$_.Group.Name] += @($_.Member.Name) }
+            Get-Pfa2ProtectionGroupVolume -Array $flashArray | ForEach-Object { $groupVolumes[$_.Group.Name] += @($_.Member.Name) }
 
             $groupHosts = @{} 
-            Get-Pfa2ProtectionGroupHost -Array $flashArray | foreach { $groupHosts[$_.Group.Name] += @($_.Member.Name) }
+            Get-Pfa2ProtectionGroupHost -Array $flashArray | ForEach-Object { $groupHosts[$_.Group.Name] += @($_.Member.Name) }
 
             $groupHostGroups = @{} 
-            Get-Pfa2ProtectionGroupHostGroup -Array $flashArray | foreach { $groupHostGroups[$_.Group.Name] += @($_.Member.Name) }
+            Get-Pfa2ProtectionGroupHostGroup -Array $flashArray | ForEach-Object { $groupHostGroups[$_.Group.Name] += @($_.Member.Name) }
 
             foreach ($protectionGroup in $ProtectionGroups) {
                 if ($protectionGroup.ReplicationSchedule.Enabled -eq 'True') {
@@ -920,7 +920,7 @@ function Get-FlashArrayQuickCapacityStats() {
             }
 
             try {
-                $s = Get-Pfa2ArraySpace -Array $flashArray | select Capacity -Expand Space
+                $s = Get-Pfa2ArraySpace -Array $flashArray | Select-Object Capacity -Expand Space
 
                 $count ++;
                 $capacity += $s.Capacity
@@ -1092,8 +1092,8 @@ function Get-FlashArraySpace() {
 
         try {
             Get-Pfa2ArraySpace -Array $flashArray -PipelineVariable a | 
-            select -Expand Space |
-            foreach { [pscustomobject]@{
+            Select-Object -Expand Space |
+            ForEach-Object { [pscustomobject]@{
                     Name                  = $a.Name
                     'Percent Used'        = ($_.TotalPhysical / $a.Capacity).ToString('P')
                     'Capacity Used (TB)'  = Convert-UnitOfSize $_.TotalPhysical -To 1TB
@@ -1427,9 +1427,9 @@ function Get-FlashArrayVolumeGrowth() {
 
                 try {
                     Get-Pfa2Volume -Array $flashArray -ErrorAction SilentlyContinue |
-                    where { $_.Space.TotalProvisioned -GT $DoNotReportVolSmallerThan } | 
-                    where { (Get-Date $_.created) -lt $latestDate } |
-                    foreach {
+                    Where-Object { $_.Space.TotalProvisioned -GT $DoNotReportVolSmallerThan } | 
+                    Where-Object { (Get-Date $_.created) -lt $latestDate } |
+                    ForEach-Object {
                         $volumeSpaceMetrics = Get-Pfa2VolumeSpace -Name $_.name -StartTime $StartTime -Array $flashArray
                         $last = ($volumeSpaceMetrics | Select-Object -Last 1).Space.Unique
                         $first = ($volumeSpaceMetrics | Select-Object -First 1).Space.Unique
@@ -1444,7 +1444,7 @@ function Get-FlashArrayVolumeGrowth() {
                             GrowthPercentage = $growthPercentage * 100
                         }
                     } |
-                    where { $_.GrowthPercentage -gt $GrowthPercentThreshold -and $_.Growth -gt $DoNotReportGrowthOfLessThan }
+                    Where-Object { $_.GrowthPercentage -gt $GrowthPercentThreshold -and $_.Growth -gt $DoNotReportGrowthOfLessThan }
                 }
                 finally {
                     Disconnect-Pfa2Array -Array $flashArray
@@ -1462,7 +1462,7 @@ function Get-FlashArrayVolumeGrowth() {
         Write-Host ''
 
         if ($volThatBreachGrowthThreshold) {
-            $result = $volThatBreachGrowthThreshold | foreach {
+            $result = $volThatBreachGrowthThreshold | ForEach-Object {
                 [pscustomobject]@{
                     Array         = $_.ArrayName
                     Name          = $_.Name
@@ -2611,7 +2611,7 @@ function New-FlashArrayPGroupVolumes() {
 
     try {
         $volumes = ( 1..$NumberOfVolumes ) |
-        foreach { "$PGroupPrefix-Vol$_" } |
+        ForEach-Object { "$PGroupPrefix-Vol$_" } |
         New-Pfa2Volume -Array $FlashArray -Provisioned ($VolumeSizeGB * 1GB)
 
         $group = New-Pfa2ProtectionGroup -Array $FlashArray -Name "$PGroupPrefix-PGroup"
@@ -2799,7 +2799,7 @@ function Restore-PfaPGroupVolumeSnapshots() {
     try {
         $groups = Get-Pfa2ProtectionGroup -Array $flashArray -Name $ProtectionGroup
         foreach ($group in $groups) {
-            $volumes = Get-Pfa2ProtectionGroupVolume -Array $flashArray -GroupNames $group.Name | select -ExpandProperty 'Member'
+            $volumes = Get-Pfa2ProtectionGroupVolume -Array $flashArray -GroupNames $group.Name | Select-Object -ExpandProperty 'Member'
             foreach ($volume in $volumes) {
                 $name = $volume.Name.Replace($group.Source.Name + '::', '')
                 $volumeName = "$Prefix-$name"
