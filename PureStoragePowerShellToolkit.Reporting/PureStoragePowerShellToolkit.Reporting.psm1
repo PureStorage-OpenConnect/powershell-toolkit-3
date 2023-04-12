@@ -1,12 +1,12 @@
 <#
     ===========================================================================
-    Release version: 3.0.0.1
+    Release version: 3.0.0
     Revision information: Refer to the changelog.md file
     ---------------------------------------------------------------------------
     Maintained by:   FlashArray Integrations and Evangelsigm Team @ Pure Storage
     Organization:    Pure Storage, Inc.
     Filename:        PureStoragePowerShellToolkit.Reporting.psm1
-    Copyright:       (c) 2022 Pure Storage, Inc.
+    Copyright:       (c) 2023 Pure Storage, Inc.
     Module Name:     PureStoragePowerShellToolkit.Reporting
     Description:     PowerShell Script Module (.psm1)
     --------------------------------------------------------------------------
@@ -20,7 +20,8 @@
 #>
 
 #Requires -Version 5
-#Requires -Modules 'ImportExcel', 'PureStoragePowerShellToolkit.FlashArray'
+#Requires -Modules @{ ModuleName='ImportExcel'; ModuleVersion='7.8.4' }
+#Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.0.3' }
 
 #region Helper functions
 
@@ -38,6 +39,7 @@ function Convert-UnitOfSize {
         return [math]::Round($Value * $From / $To, $Decimals)
     }
 }
+
 function Write-Color {
     [CmdletBinding()]
     param(
@@ -436,9 +438,9 @@ function New-HypervClusterVolumeReport() {
     
         #Get VMs & VHDs
         $nodes = Get-ClusterNode
-        $vhds = Get-VM -ComputerName $nodes.Name | foreach { $_ } -PipelineVariable 'vm' | foreach {
+        $vhds = Get-VM -ComputerName $nodes.Name | ForEach-Object { $_ } -PipelineVariable 'vm' | ForEach-Object {
             Get-Vhd -ComputerName $_.ComputerName -VmId $_.VmId 
-        } | foreach {
+        } | ForEach-Object {
             [pscustomobject]@{
                 'VM Name'           = $vm.Name
                 'VM State'          = $vm.State
@@ -456,9 +458,9 @@ function New-HypervClusterVolumeReport() {
         }
 
         #Get hosts and volumes
-        $volumes = $nodes | foreach { $_ } -PipelineVariable 'node' | foreach {
-            Get-Disk -CimSession $node.Name | where Number -ne $null | Get-Partition | Get-Volume 
-        } | where DriveType -eq Fixed | foreach {
+        $volumes = $nodes | ForEach-Object { $_ } -PipelineVariable 'node' | ForEach-Object {
+            Get-Disk -CimSession $node.Name | Where-Object Number -ne $null | Get-Partition | Get-Volume 
+        } | Where-Object DriveType -eq Fixed | ForEach-Object {
             [pscustomobject]@{
                 ComputerName        = $node.Name
                 Label               = $_.FileSystemLabel
@@ -476,12 +478,12 @@ function New-HypervClusterVolumeReport() {
 
         #Get Pure volumes
         $sn = $vhds | 
-        foreach { Get-Volume -FilePath $_.Path -CimSession $_.ComputerName } | 
-        group 'ObjectId' | 
-        foreach { $_.Group[0] } | 
+        ForEach-Object { Get-Volume -FilePath $_.Path -CimSession $_.ComputerName } | 
+        Group-Object 'ObjectId' | 
+        ForEach-Object { $_.Group[0] } | 
         Get-Partition | 
         Get-Disk | 
-        select -ExpandProperty 'SerialNumber'
+        Select-Object -ExpandProperty 'SerialNumber'
 
         $pureVolumes = @()
     }
@@ -503,7 +505,7 @@ function New-HypervClusterVolumeReport() {
             try {
                 $details = Get-Pfa2Array -Array $flasharray
 
-                $pureVolumes += Get-Pfa2Volume -Array $flashArray | where { $sn -contains $_.serial } | select 'Name' -ExpandProperty 'Space' | foreach {
+                $pureVolumes += Get-Pfa2Volume -Array $flashArray | Where-Object { $sn -contains $_.serial } | Select-Object 'Name' -ExpandProperty 'Space' | ForEach-Object {
                     [pscustomobject]@{
                         Array               = $details.Name
                         Name                = $_.Name
