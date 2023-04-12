@@ -1570,7 +1570,7 @@ function New-FlashArrayCapacityReport() {
     This cmdlet will retrieve volume and snapshot capacity information from the FlashArray and output it to a formatted report.
     .PARAMETER Endpoint
     Required. FQDN or IP address of the FlashArray.
-    .PARAMETER OutFile
+    .PARAMETER OutHTMLFile
     Optional. Path for output report file. Default is %TEMP%\Array_Capacity_Report.html.
     .PARAMETER VolumeFilter
     Optional. Specific volumes to filter output on. Wildcards are accepted. By default, this is "*" (all).
@@ -1586,12 +1586,12 @@ function New-FlashArrayCapacityReport() {
     Creates 'myarray.mydomain.com' FlashArray capacity report named 'Array_Capacity_Report.html' in the %TEMP% folder.
 
     .EXAMPLE
-    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutFile '.\reports\dev_array.html'
+    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html'
 
     Creates 'myarray.mydomain.com' FlashArray capacity report located at the path '.\reports\dev_array.html'.
 
     .EXAMPLE
-    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutFile '.\reports\dev_array.html' -VolumeFilter 'dev-*'
+    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html' -VolumeFilter 'dev-*'
 
     Creates 'myarray.mydomain.com' FlashArray capacity report located at the path '.\reports\dev_array.html'.
     Volumes names to include matches 'dev-*' pattern.
@@ -1606,7 +1606,7 @@ function New-FlashArrayCapacityReport() {
         [ValidateNotNullOrEmpty()]
         [string]$Endpoint,
         [ValidateNotNullOrEmpty()]
-        [string]$OutFile = (Join-Path $env:Temp 'Array_Capacity_Report.html'),
+        [string]$OutHTMLFile = (Join-Path $env:Temp 'Array_Capacity_Report.html'),
         [ValidateNotNullOrEmpty()]
         [string]$VolumeFilter = '*',
         [pscredential]$Credential = ( Get-PfaCredential )
@@ -2481,10 +2481,6 @@ AElFTkSuQmCC">
 <td>$($FlashArrayConfig.version)</td>
 </tr>
 <tr>
-<td>Revision</td>
-<td>$($FlashArrayConfig.revision)</td>
-</tr>
-<tr>
 <td>ID</td>
 <td>$($FlashArrayConfig.id)</td>
 </tr>
@@ -2543,10 +2539,10 @@ $ReportDateTime
     # Assemble the final report from all our HTML sections
     $HTMLmessage = $HTMLHeader + $HTMLMiddle + $HTMLEnd
     # Save the report out to a file
-    $HTMLmessage | Out-File $OutFile
+    $HTMLmessage | Out-File $OutHTMLFile
 
     Write-Host ''
-    Write-Host "The report file path $(Resolve-Path $OutFile)." -ForegroundColor Green
+    Write-Host "The report file path $(Resolve-Path $OutHTMLFile)." -ForegroundColor Green
 }
 
 function New-FlashArrayPGroupVolumes() {
