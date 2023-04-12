@@ -515,17 +515,17 @@ function Get-WindowsDiagnosticInfo() {
     Diagnostic outputs in txt and event log files.
     Compressed zip file.
     .EXAMPLE
-    Get-WindowsDiagnosticInfo.ps1 -Path '.\diagnostic_report' -Cluster
+    Get-WindowsDiagnosticInfo -Path '.\diagnostic_report' -Cluster
 
     Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the 'diagnostic_report' folder.
 
     .EXAMPLE
-    Get-WindowsDiagnosticInfo.ps1 -Cluster
+    Get-WindowsDiagnosticInfo -Cluster
 
     Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the default folder.
 
     .EXAMPLE
-    Get-WindowsDiagnosticInfo.ps1 -Compress
+    Get-WindowsDiagnosticInfo -Compress
 
     Retrieves all of the operating system, hardware, software, event log, and compresses the parent folder into a zip file that will be created in the %temp% folder.
 
