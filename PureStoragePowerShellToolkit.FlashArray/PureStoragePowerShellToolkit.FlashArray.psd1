@@ -70,8 +70,8 @@ ProcessorArchitecture = ''
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
     @{ 
-        ModuleName="PureStoragePowerShellSDK2";
-        ModuleVersion="2.16";
+        ModuleName="PureStoragePowerShellSDK2"
+        ModuleVersion="2.16"
         GUID = 'a12b790d-4a25-46c3-a457-910bc7203e1f'
     }
 )

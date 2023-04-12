@@ -39,6 +39,7 @@ function Convert-UnitOfSize {
         return [math]::Round($Value * $From / $To, $Decimals)
     }
 }
+
 function Write-Color {
     [CmdletBinding()]
     param(

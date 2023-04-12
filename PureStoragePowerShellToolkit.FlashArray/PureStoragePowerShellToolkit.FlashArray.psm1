@@ -20,7 +20,7 @@
 #>
 
 #Requires -Version 5
-#Requires -Modules @{ ModuleName="PureStoragePowerShellSDK2"; ModuleVersion="2.16" }
+#Requires -Modules @{ ModuleName='PureStoragePowerShellSDK2'; ModuleVersion='2.16' }
 
 #region Helper functions
 
@@ -38,6 +38,7 @@ function Convert-UnitOfSize {
         return [math]::Round($Value * $From / $To, $Decimals)
     }
 }
+
 function Write-Color {
     [CmdletBinding()]
     param(
@@ -1717,38 +1718,38 @@ body {
     font-family: Proxima Nova, Verdana, Geneva, Arial, Helvetica, Sans-Serif;
 }
 table {
-    border-collapse: collapse;
-    border: none;
-    border-right: 1px grey solid;
+	border-collapse: collapse;
+	border: none;
+	border-right: 1px grey solid;
     border-top: 1px grey solid;
     border-bottom: 1px grey solid;
     border-left: 1px grey solid;
-    text-align: left;
-    font: 12pt Proxima Nova, Verdana, Geneva, Arial, Helvetica, Sans-Serif;
-    color: black;
-    margin-bottom: 10px;
+	text-align: left;
+	font: 12pt Proxima Nova, Verdana, Geneva, Arial, Helvetica, Sans-Serif;
+	color: black;
+	margin-bottom: 10px;
     margin-left: 20px;
 }
 
 table td {
     vertical-align: top;
-    font-size: 12px;
-    padding-left: 2px;
-    padding-right: 2px;
-    text-align: left;
-    border-right: 1px grey solid;
+	font-size: 12px;
+	padding-left: 2px;
+	padding-right: 2px;
+	text-align: left;
+	border-right: 1px grey solid;
     border-top: 1px grey solid;
     border-bottom: 1px grey solid;
     border-left: 1px grey solid;
 }
 
 table th {
-    font-size: 14px;
-    font-weight: bold;
-    padding-left: 2px;
-    padding-right: 2px;
-    text-align: left;
-    border-right: 1px grey solid;
+	font-size: 14px;
+	font-weight: bold;
+	padding-left: 2px;
+	padding-right: 2px;
+	text-align: left;
+	border-right: 1px grey solid;
     border-top: 1px grey solid;
     border-bottom: 1px grey solid;
     border-left: 1px grey solid;
@@ -1760,15 +1761,15 @@ h2 {
 }
 
 h3 {
-    clear: both;
-    font-size: 115%;
-    margin-left: 20px;
-    margin-top: 30px;
+	clear: both;
+	font-size: 115%;
+	margin-left: 20px;
+	margin-top: 30px;
 }
 
 protected {
     font-weight: bold;
-    text-align: left;
+	text-align: left;
 }
 
 p {
@@ -1781,25 +1782,25 @@ hr {
 }
 
 table.list {
-    font-size: 12px;
-    font-weight: normal;
-    padding-left: 2px;
-    padding-right: 2px;
-    text-align: right;
+	font-size: 12px;
+	font-weight: normal;
+	padding-left: 2px;
+	padding-right: 2px;
+	text-align: right;
     border-style: solid;
     width: 700px;
 }
 
 table.list td:nth-child(1) {
-    font-weight: bold;
-    border-right: 1px grey solid;
-    text-align: left;
+	font-weight: bold;
+	border-right: 1px grey solid;
+	text-align: left;
 }
 
 table.list td:nth-child(2) {
     padding-left: 2px;
-    border-right: 1px grey solid;
-    text-align: left;
+	border-right: 1px grey solid;
+	text-align: left;
 }
 
 table tr:nth-child(even) td:nth-child(even) {
@@ -1842,8 +1843,8 @@ div.absolute {
     left: 350px;
     width: 250px;
     height: 75px;
-    font-size: 14px;
-    font-weight: bold;
+	font-size: 14px;
+	font-weight: bold;
 }
 
 div.time {
@@ -1852,8 +1853,8 @@ div.time {
     left: 0px;
     width: 600px;
     height: 75px;
-    font-size: 12px;
-    font-weight: normal;
+	font-size: 12px;
+	font-weight: normal;
 }
 
 img {

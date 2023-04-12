@@ -70,19 +70,23 @@ ProcessorArchitecture = ''
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.DatabaseTools';
+        ModuleName = 'PureStoragePowerShellToolkit.DatabaseTools'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.Reporting';
+        ModuleName = 'PureStoragePowerShellToolkit.Reporting'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.FlashArray';
+        ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
+        Moduleversion = '3.0.0.3'
+    },
+    @{
+        ModuleName = 'PureStoragePowerShellToolkit.WindowsAdministration'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.WindowsAdministration';
+        ModuleName = 'PureStoragePowerShellToolkit.Exchange'
         ModuleVersion = '3.0.0.3'
     }
 )

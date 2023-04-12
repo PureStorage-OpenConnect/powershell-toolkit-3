@@ -69,13 +69,13 @@ ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
-    @{
-        ModuleName = 'PureStoragePowerShellToolkit.FlashArray';
+    @{ 
+        ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'dbatools';
-        ModuleVersion = '1.1.145'
+        ModuleName = 'dbatools'
+        ModuleVersion = '1.1.146'
     }
 )
 

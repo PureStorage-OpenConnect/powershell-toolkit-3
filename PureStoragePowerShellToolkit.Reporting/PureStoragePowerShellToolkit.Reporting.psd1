@@ -70,11 +70,11 @@ ProcessorArchitecture = ''
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.FlashArray';
+        ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'ImportExcel';
+        ModuleName = 'ImportExcel'
         ModuleVersion = '7.8.4'
     }
 )
