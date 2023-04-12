@@ -637,7 +637,7 @@ Function Get-FlashArrayHierarchy() {
                         ForEach ($Volume in $Volumes) {
 
                             #Reset variables
-                            $Snapshots = @(Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $Volume.name)
+                            $Snapshots = @(Get-Pfa2VolumeSnapshot -Array $FlashArray -SourceNames $Volume.name)
                             $SpaceConsumed = 0
 
                             #Change value for snapshot count threshold
@@ -678,7 +678,7 @@ Function Get-FlashArrayHierarchy() {
                 ForEach ($Volume in $Volumes) {
 
                     #Reset variables
-                    $Snapshots = @(Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $Volume.name)
+                    $Snapshots = @(Get-Pfa2VolumeSnapshot -Array $FlashArray -SourceNames $Volume.name)
                     $SpaceConsumed = 0
 
                     #Change value for snapshot count threshold
@@ -1653,7 +1653,7 @@ function New-FlashArrayCapacityReport() {
         $volumeInfo = $null
         $provisioned = 0
 
-        $volumes = Get-Pfa2Volume -Array $FlashArray -Name $VolumeFilter -Filter "not(subtype='protocol_endpoint')"
+        $volumes = Get-Pfa2Volume -Array $FlashArray -Filter "name='$VolumeFilter' and not(subtype='protocol_endpoint')"
         $volumeInfo += "<th>Volume Name</th><th>Volume Size (GB)</th><th>Connection</th><th><center>Protected</center></th><th>DR</th><th>SS</th><th>TP</th><th>WS (GB)</th>"
 
         ForEach ($volume in $volumes) {
@@ -1671,7 +1671,7 @@ function New-FlashArrayCapacityReport() {
             }
 
             # Does the volume have any snapshots?
-            if (!(Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $volume.name)) {
+            if (!(Get-Pfa2VolumeSnapshot -Array $FlashArray -SourceNames $volume.name)) {
                 $protected = "No"
             }
             else {
@@ -1690,7 +1690,7 @@ function New-FlashArrayCapacityReport() {
         }
 
         $snapshotInfo = $null
-        $snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray -Name $VolumeFilter
+        $snapshots = Get-Pfa2VolumeSnapshot -Array $FlashArray -Filter "source.name='$VolumeFilter'"
         $snapshotInfo += "<th>Snapshot Name</th><th>Snapshot Size (GB)</th>"
         ForEach ($snapshot in $snapshots) {
             $printSnapshot = $snapshot.name
