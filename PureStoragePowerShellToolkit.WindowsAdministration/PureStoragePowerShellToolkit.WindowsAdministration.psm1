@@ -1332,9 +1332,14 @@ function Test-WindowsBestPractices() {
     Test-WindowsBestPractices -Repair -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
 
     Run the cmdlet against the local machine, run the additional iSCSI tests, repair settings to their recommended values, and create the log file at c:\temp\mylog.log.
+
+    .EXAMPLE
+    Test-WindowsBestPractices -Repair -Confirm:$false
+
+    Run the cmdlet against the local machine, repair settings to their recommended values skipping confirmation prompt.
     #>
 
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     Param (
         [switch]$Repair,
         [string]$LogFilePath = (Join-Path $env:Temp 'BestPractices.log'),
@@ -1353,6 +1358,11 @@ function Test-WindowsBestPractices() {
     }
 
     'Starting best practices verification' | Write-TestLog @log
+
+    if (($PSVersionTable.PSVersion.Major -gt 5 -and -not $IsWindows) -or (Get-CimInstance -ClassName 'Win32_OperatingSystem').ProductType -lt 2) {
+        'Windows Server operating system is required.' | Write-TestLog -severity 'Failed' @log
+        return
+    }
 
     $ft = Get-WindowsFeature -Name 'Multipath-IO'
     if ($ft.InstallState -ne 'Installed')
@@ -1459,7 +1469,7 @@ function Test-AzureVm()
 }
 
 function Test-Item() {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(ValueFromPipeline)]
         [scriptblock]$test,

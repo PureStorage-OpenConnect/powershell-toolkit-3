@@ -186,8 +186,16 @@ class ShadowWriter {
     }
 }
 
-function Invoke-Diskshadow()
-{
+function Invoke-Diskshadow() {
+    <#
+    .SYNOPSIS
+    Runs Diskshadow commands.
+    .DESCRIPTION
+    Runs Diskshadow commands in a script mode.
+    .PARAMETER Script
+    Specifies commands to run.
+    #>
+
     [CmdletBinding()]
     param($script)
 
@@ -208,19 +216,27 @@ function Invoke-Diskshadow()
     }
 }
 
-function Get-ExchDatabase()
-{
+function Get-ExchangeDatabase() {
+    <#
+    .SYNOPSIS
+    Gets a mailbox database copy.
+    .DESCRIPTION
+    Gets a mailbox database local copy configuration.
+    .PARAMETER DatabaseName
+    Specifies name of the mailbox database.
+    #>
+
     [CmdletBinding()]
     param([string]$name)
 
     $local_copy = Get-MailboxDatabaseCopyStatus -Identity $name -Local
-    $database_volume = Get-ExchVolume -path $local_copy.DatabaseVolumeName
+    $database_volume = Get-ExchangeVolume -path $local_copy.DatabaseVolumeName
     $bus_type = @($database_volume.BusType)
     $serial = @($database_volume.SerialNumber)
     $distinct = $local_copy.DatabaseVolumeName -ne $local_copy.LogVolumeName
     if ($distinct)
     {
-        $log_volume = Get-ExchVolume -path $local_copy.LogVolumeName
+        $log_volume = Get-ExchangeVolume -path $local_copy.LogVolumeName
         $serial += $log_volume.SerialNumber
         if ($database_volume.BusType -ne $log_volume.BusType) {
             $bus_type += $log_volume.BusType
@@ -241,7 +257,16 @@ function Get-ExchDatabase()
     }
 }
 
-function Get-ExchVolume() {
+function Get-ExchangeVolume() {
+    <#
+    .SYNOPSIS
+    Gets PURE volume.
+    .DESCRIPTION
+    Gets the volume for the file path specified.
+    .PARAMETER Path
+    Specifies the full path of a file.
+    #>
+
     [CmdletBinding()]
     param([string]$path)
 
@@ -265,8 +290,14 @@ function Get-ExchVolume() {
     }
 }
 
-function Get-ExchRoot()
-{
+function Get-ExchangeRoot() {
+    <#
+    .SYNOPSIS
+    Gets root directory for storing backups.
+    .DESCRIPTION
+    Gets fully qualified path to the root directory for storing backups metadata (.cab) files.
+    #>
+
     [CmdletBinding()]
     param()
 
@@ -278,8 +309,14 @@ function Get-ExchRoot()
     return Join-Path $root 'Exchange'
 }
 
-function Get-Provider() 
-{
+function Get-Provider() {
+    <#
+    .SYNOPSIS
+    Gets PURE hardware provider service configuration.
+    .DESCRIPTION
+    Gets fully qualified path to the service binary file that implements the service.
+    #>
+
     [CmdletBinding()]
     param()
 
@@ -295,6 +332,15 @@ function Get-Provider()
 }
 
 function Test-BusType() {
+    <#
+    .SYNOPSIS
+    Determines whether the I/O bus type is supported.
+    .DESCRIPTION
+    Determines whether the I/O bus type used by the disk is supported.
+    .PARAMETER BusType
+    The I/O bus type.
+    #>
+
     [CmdletBinding()]
     param([string[]]$busType)
     
@@ -350,7 +396,7 @@ function Dismount-ExchangeBackup() {
 
         $unexpose_format = 'UNEXPOSE %{0}%'
 
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         if (-not (Test-Path $root)) {
             throw 'Backup not found.'
         }
@@ -369,7 +415,7 @@ function Dismount-ExchangeBackup() {
             if (-not (Test-Path $cab_path)) {
                 throw "Database backup '$Alias' not found."
             }
-            $db = Get-ExchDatabase -name $db_name
+            $db = Get-ExchangeDatabase -name $db_name
             if (-not (Test-BusType -busType $db.BusType)) {
                 throw "Bus type '$($db.BusType)' not supported. Expected value is '$script:supportedBusTypes'."
             }
@@ -604,7 +650,7 @@ function Get-ExchangeBackup() {
             throw "Exchange snap-in '$script:exch_snapin' not found. Add snap-in to the current session."
         }
 
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         if (-not (Test-Path $root)) {
             return
         }
@@ -625,7 +671,7 @@ function Get-ExchangeBackup() {
             }
             $db = $null
             try {
-                $db = Get-ExchDatabase -name $db_name
+                $db = Get-ExchangeDatabase -name $db_name
             }
             catch {
                 # ignore
@@ -719,7 +765,7 @@ function Mount-ExchangeBackup() {
 
         $expose_format = 'EXPOSE %{0}% "{1}"'
 
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         if (-not (Test-Path $root)) {
             throw 'Backup not found.'
         }
@@ -738,7 +784,7 @@ function Mount-ExchangeBackup() {
             if (-not (Test-Path $cab_path)) {
                 throw "Database backup '$Alias' not found."
             }
-            $db = Get-ExchDatabase -name $db_name
+            $db = Get-ExchangeDatabase -name $db_name
             if (-not (Test-BusType -busType $db.BusType)) {
                 throw "Bus type '$($db.BusType)' not supported. Expected value is '$script:supportedBusTypes'."
             }
@@ -847,7 +893,7 @@ function New-ExchangeBackup() {
 
         $add_volume_format = "ADD VOLUME {0} ALIAS {1} Provider {$($script:PureProvider.ToString('B'))}"
 
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         $alias = (Get-Date).ToUniversalTime().ToString($script:backupNameFormat)
     }
 
@@ -856,7 +902,7 @@ function New-ExchangeBackup() {
             if (-not $PSCmdlet.ShouldProcess("Database '$db_name'", 'Create backup')) {
                 continue
             }
-            $db = Get-ExchDatabase -name $db_name
+            $db = Get-ExchangeDatabase -name $db_name
             if (-not (Test-BusType -busType $db.BusType)) {
                 throw "Bus type '$($db.BusType)' not supported. Expected value is '$script:supportedBusTypes'"
             }
@@ -962,7 +1008,7 @@ function Remove-ExchangeBackup() {
     )
 
     begin {
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         if (-not (Test-Path $root)) {
             throw 'Backup not found.'
         }
@@ -1107,7 +1153,7 @@ function Restore-ExchangeBackup() {
 
         $add_shadow_format = 'ADD SHADOW %{0}%'
 
-        $root = Get-ExchRoot
+        $root = Get-ExchangeRoot
         if (-not (Test-Path $root)) {
             throw 'Backup not found.'
         }
@@ -1126,7 +1172,7 @@ function Restore-ExchangeBackup() {
             if (-not (Test-Path $cab_path)) {
                 throw "Database backup '$Alias' not found."
             }
-            $db = Get-ExchDatabase -name $db_name
+            $db = Get-ExchangeDatabase -name $db_name
             if (-not (Test-BusType -busType $db.BusType)) {
                 throw "Bus type '$($db.BusType)' not supported. Expected value is '$script:supportedBusTypes'."
             }

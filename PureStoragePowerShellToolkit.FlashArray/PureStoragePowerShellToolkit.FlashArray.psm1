@@ -977,7 +977,7 @@ function Get-FlashArrayRASession() {
 
     Retrieves the current Remote Assist status and continues check status every 30 seconds until stopped. Asks for credentials.
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
@@ -1597,7 +1597,7 @@ function New-FlashArrayCapacityReport() {
     Volumes names to include matches 'dev-*' pattern.
 
     .NOTES
-    This cmdlet can utilize the global $Creds variable for FlashArray authentication. Set the variable $Creds by using the command $Creds = Get-Credential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
     [CmdletBinding()]
@@ -2838,6 +2838,11 @@ function Sync-FlashArrayHosts() {
     Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array'.
 
     .EXAMPLE
+    Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -Confirm:$false
+
+    Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array' skipping confirmation prompt.
+
+    .EXAMPLE
     Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -HostName 'vm-*'
 
     Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array'. Hosts names to synchronize matches 'vm-*' pattern.
@@ -2851,7 +2856,7 @@ function Sync-FlashArrayHosts() {
     This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     Param (
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -2889,6 +2894,12 @@ function Sync-FlashArrayHosts() {
         }
 
         try {
+            $sync_msg = "Copy hosts configuration from $SourceArray to $TargetArray. " +
+            "This action overwrites the target array's configuration and can be destructive."
+            if (-not $PSCmdlet.ShouldProcess($sync_msg, "Are you sure you want to perform this action?`n$sync_msg", 'Confirm')) {
+                return
+            }
+
             Get-Pfa2HostGroup -Array $flashArray1 -Filter "not(contains(name,':'))" | New-Pfa2HostGroup -Array $flashArray2
 
             $fa1Hosts = Get-Pfa2Host -Array $flashArray1 -Filter "not(contains(name,':'))" -Name $HostName
