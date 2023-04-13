@@ -113,7 +113,7 @@ function Write-Color {
 
 #endregion Helper functions
 
-function New-FlashArrayExcelReport {
+function New-Pfa2ExcelReport {
     <#
     .SYNOPSIS
     Create an Excel workbook that contains FlashArray Information for each endpoint specified.
@@ -133,33 +133,33 @@ function New-FlashArrayExcelReport {
     .OUTPUTS
     An Excel workbook
     .EXAMPLE
-    New-FlashArrayExcelReport -Endpoint 'myarray.mydomain.com'
+    New-Pfa2ExcelReport -Endpoint 'myarray.mydomain.com'
 
     Creates an Excel file in the %temp% folder for array myarray.mydomain.com.
 
     .EXAMPLE
-    New-FlashArrayExcelReport -Endpoint 'myarray01', 'myarray02' -OutPath '.\reports'
+    New-Pfa2ExcelReport -Endpoint 'myarray01', 'myarray02' -OutPath '.\reports'
 
     Creates an Excel file for myarray01 and myarray02. Reports are located in the 'reports' folder.
 
     .EXAMPLE
-    Get-Content '.\arrays.txt' | New-FlashArrayExcelReport -OutPath '.\reports'
+    Get-Content '.\arrays.txt' | New-Pfa2ExcelReport -OutPath '.\reports'
 
     Creates an Excel file for each array in the arrays.txt file. Reports are located in the 'reports' folder.
 
     .EXAMPLE
-    New-FlashArrayExcelReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential) -OutPath '.\reports'
+    New-Pfa2ExcelReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential) -OutPath '.\reports'
 
     Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
 
     .EXAMPLE
     $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
-    $endpoint | New-FlashArrayExcelReport -OutPath '.\reports'
+    $endpoint | New-Pfa2ExcelReport -OutPath '.\reports'
 
     Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -170,7 +170,7 @@ function New-FlashArrayExcelReport {
         [int]$SnapLimit,
         [string]$OutPath = $env:Temp,
         [Parameter(ValueFromPipelineByPropertyName)]
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     begin {
@@ -363,7 +363,7 @@ function New-FlashArrayExcelReport {
     }
 }
 
-function New-HypervClusterVolumeReport() {
+function New-Pfa2HypervClusterVolumeReport() {
     <#
     .SYNOPSIS
     Creates a Excel report on volumes connected to a Hyper-V cluster.
@@ -384,33 +384,33 @@ function New-HypervClusterVolumeReport() {
     .OUTPUTS
     Outputs individual CSV files and creates an Excel workbook that is built using the required PowerShell module ImportExcel, created by Douglas Finke.
     .EXAMPLE
-    New-HypervClusterVolumeReport -Endpoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile.xlsx
+    New-Pfa2HypervClusterVolumeReport -Endpoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile.xlsx
 
     This will create three separate CSV files with HyperV cluster information and incorporate them into a single Excel workbook.
 
     .EXAMPLE
-    New-HypervClusterVolumeReport -Endpoint 'myarray01', 'myarray02'
+    New-Pfa2HypervClusterVolumeReport -Endpoint 'myarray01', 'myarray02'
 
     This will create files with HyperV cluster information, and FlashArray information for myarray01, and myarray02.
 
     .EXAMPLE
-    Get-Content '.\arrays.txt' | New-HypervClusterVolumeReport
+    Get-Content '.\arrays.txt' | New-Pfa2HypervClusterVolumeReport
 
     This will create files with HyperV cluster information, and FlashArray information for each array in the arrays.txt file.
 
     .EXAMPLE
-    New-HypervClusterVolumeReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential)
+    New-Pfa2HypervClusterVolumeReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential)
 
     This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
 
     .EXAMPLE
     $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
-    $endpoint | New-HypervClusterVolumeReport
+    $endpoint | New-Pfa2HypervClusterVolumeReport
 
     This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -423,7 +423,7 @@ function New-HypervClusterVolumeReport() {
         [string]$PfaCsvFileName = "FlashArrays.csv",
         [string]$ExcelFile = "HypervClusterReport.xlsx",
         [Parameter(ValueFromPipelineByPropertyName)]
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     begin {
@@ -530,6 +530,6 @@ function New-HypervClusterVolumeReport() {
 }
 
 # Declare exports
-Export-ModuleMember -Function New-FlashArrayExcelReport
-Export-ModuleMember -Function New-HypervClusterVolumeReport
+Export-ModuleMember -Function New-Pfa2ExcelReport
+Export-ModuleMember -Function New-Pfa2HypervClusterVolumeReport
 # END

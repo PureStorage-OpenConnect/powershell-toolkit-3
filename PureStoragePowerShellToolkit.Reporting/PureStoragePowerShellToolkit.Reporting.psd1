@@ -96,8 +96,8 @@ FormatsToProcess = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    'New-FlashArrayExcelReport',
-    'New-HypervClusterVolumeReport'
+    'New-Pfa2ExcelReport',
+    'New-Pfa2HypervClusterVolumeReport'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

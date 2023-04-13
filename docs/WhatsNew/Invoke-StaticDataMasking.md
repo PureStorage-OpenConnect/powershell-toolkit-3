@@ -1,4 +1,4 @@
-# What's new in Invoke-StaticDataMasking
+# What's new in Invoke-Pfa2StaticDataMasking
 
 - Add support for standard parameters `-Verbose`, `-Confirm`, and `-WhatIf`
 - Add optional SqlCredential parameter
