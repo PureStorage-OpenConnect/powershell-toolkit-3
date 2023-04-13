@@ -93,25 +93,25 @@ NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    'Get-AllHostVolumeInfo',
-    'Get-FlashArrayDisconnectedVolumes',
-    'Get-FlashArraySpace',
-    'Get-FlashArrayStaleSnapshots',
-    'Get-FlashArrayPgroupsConfig',
-    'Get-FlashArrayConfig',
-    'Get-FlashArrayHierarchy',
-    'Get-FlashArrayQuickCapacityStats',
-    'Get-FlashArrayRASession',
-    'Get-FlashArrayVolumeGrowth',
-    'Get-FlashArrayConnectDetails',
-    'Remove-FlashArrayPendingDeletes',
-    'Restore-PfaPGroupVolumeSnapshots',
-    'Sync-FlashArrayHosts',
-    'New-FlashArrayPGroupVolumes',
-    'New-FlashArrayCapacityReport',
-    'Get-PfaCredential',
-    'Set-PfaCredential',
-    'Clear-PfaCredential'
+    'Get-Pfa2AllHostVolumeInfo',
+    'Get-Pfa2DisconnectedVolumes',
+    'Get-Pfa2Space',
+    'Get-Pfa2StaleSnapshots',
+    'Get-Pfa2PgroupsConfig',
+    'Get-Pfa2Config',
+    'Get-Pfa2Hierarchy',
+    'Get-Pfa2QuickCapacityStats',
+    'Get-Pfa2RASession',
+    'Get-Pfa2VolumeGrowth',
+    'Get-Pfa2ConnectDetails',
+    'Remove-Pfa2PendingDeletes',
+    'Restore-Pfa2PGroupVolumeSnapshots',
+    'Sync-Pfa2Hosts',
+    'New-Pfa2PGroupVolumes',
+    'New-Pfa2CapacityReport',
+    'Get-Pfa2Credential',
+    'Set-Pfa2Credential',
+    'Clear-Pfa2Credential'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

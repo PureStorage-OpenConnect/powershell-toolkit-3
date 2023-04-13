@@ -111,7 +111,7 @@ function Write-Color {
 
 #endregion Helper functions
 
-function Get-FlashArraySerialNumbers() {
+function Get-Pfa2SerialNumbers() {
     <#
     .SYNOPSIS
     Retrieves FlashArray disk serial numbers connected to the host.
@@ -124,59 +124,59 @@ function Get-FlashArraySerialNumbers() {
     .OUTPUTS
     Outputs serial numbers of FlashArrays devices.
     .EXAMPLE
-    Get-FlashArraySerialNumbers
+    Get-Pfa2SerialNumbers
 
     Returns serial number information on Pure FlashArray disk devices connected to the host.
 
     .EXAMPLE
-    Get-FlashArraySerialNumbers -CimSession 'myComputer'
+    Get-Pfa2SerialNumbers -CimSession 'myComputer'
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Get-FlashArraySerialNumbers -CimSession $session
-    Get-HostBusAdapter -CimSession $session
+    Get-Pfa2SerialNumbers -CimSession $session
+    Get-Pfa2HostBusAdapter -CimSession $session
 
     Returns serial number information on Pure FlashArray disk devices and host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Get-FlashArraySerialNumbers -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Get-Pfa2SerialNumbers -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer'
     with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Get-FlashArraySerialNumbers -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Get-Pfa2SerialNumbers -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer'
     with credentials stored in a secret vault.
 
     .EXAMPLE
-    Get-FlashArraySerialNumbers -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Get-Pfa2SerialNumbers -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Get-FlashArraySerialNumbers
+    'myComputer' | Get-Pfa2SerialNumbers
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Get-FlashArraySerialNumbers
+    $session | Get-Pfa2SerialNumbers
 
     Returns serial number information on Pure FlashArray disk devices with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Get-FlashArraySerialNumbers
+    'myComputer01', 'myComputer02' | Get-Pfa2SerialNumbers
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Get-FlashArraySerialNumbers
+    $prod | Get-Pfa2SerialNumbers
 
     Returns serial number information on Pure FlashArray disk devices connected to 'myComputer' with current credentials.
     #>
@@ -193,7 +193,7 @@ function Get-FlashArraySerialNumbers() {
     }
 }
 
-function Get-HostBusAdapter() {
+function Get-Pfa2HostBusAdapter() {
     <#
     .SYNOPSIS
     Retrieves host bus adapater (HBA) information.
@@ -206,57 +206,57 @@ function Get-HostBusAdapter() {
     .OUTPUTS
     Host bus adapater information.
     .EXAMPLE
-    Get-HostBusAdapter 
+    Get-Pfa2HostBusAdapter 
 
     Returns HBA information for the host.
 
     .EXAMPLE
-    Get-HostBusAdapter -CimSession 'myComputer'
+    Get-Pfa2HostBusAdapter -CimSession 'myComputer'
 
     Returns HBA information for 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Get-FlashArraySerialNumbers -CimSession $session
-    Get-HostBusAdapter -CimSession $session
+    Get-Pfa2SerialNumbers -CimSession $session
+    Get-Pfa2HostBusAdapter -CimSession $session
 
     Returns serial number information on Pure FlashArray disk devices and host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Get-HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Get-Pfa2HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Returns HBA information for 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Get-HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Get-Pfa2HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Returns HBA information for 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Get-HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Get-Pfa2HostBusAdapter -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Returns HBA information for 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Get-HostBusAdapter
+    'myComputer' | Get-Pfa2HostBusAdapter
 
     Returns HBA information for 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Get-HostBusAdapter
+    $session | Get-Pfa2HostBusAdapter
 
     Returns HBA information for 'myComputer' with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Get-HostBusAdapter
+    'myComputer01', 'myComputer02' | Get-Pfa2HostBusAdapter
 
     Returns HBA information for 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Get-HostBusAdapter
+    $prod | Get-Pfa2HostBusAdapter
 
     Returns HBA information for 'myComputer' with current credentials.
     #>
@@ -295,7 +295,7 @@ function Get-HostBusAdapter() {
     }
 }
 
-function Get-MPIODiskLBPolicy() {
+function Get-Pfa2MPIODiskLBolicy() {
     <#
     .SYNOPSIS
     Retrieves the current MPIO Load Balancing policy for Pure FlashArray disk(s).
@@ -308,23 +308,23 @@ function Get-MPIODiskLBPolicy() {
     .OUTPUTS
     mpclaim.exe output.
     .EXAMPLE
-    Get-MPIODiskLBPolicy
+    Get-Pfa2MPIODiskLBolicy
 
     Returns the current MPIO Load Balancing Policy for all MPIO disks.
 
     .EXAMPLE
-    Get-MPIODiskLBPolicy -DiskId 1
+    Get-Pfa2MPIODiskLBolicy -DiskId 1
 
     Returns the current MPIO LB policy for MPIO disk 1.
 
     .EXAMPLE
-    2, 3 | Get-MPIODiskLBPolicy
+    2, 3 | Get-Pfa2MPIODiskLBolicy
 
     Returns the current MPIO LB policy for MPIO disks 2 and 3.
 
     .EXAMPLE
     $dataDisk = [pscustomobject]@{Caption = 'Prod Data'; DiskId = 2}
-    $dataDisk | Get-MPIODiskLBPolicy
+    $dataDisk | Get-Pfa2MPIODiskLBolicy
 
     Returns the current MPIO LB policy for MPIO disk 2.
     #>
@@ -357,7 +357,7 @@ function Get-MPIODiskLBPolicy() {
     }
 }
 
-function Get-QuickFixEngineering() {
+function Get-Pfa2QuickFixEngineering() {
     <#
     .SYNOPSIS
     Retrieves all the Windows OS QFE patches applied.
@@ -370,57 +370,57 @@ function Get-QuickFixEngineering() {
     .OUTPUTS
     Outputs a listing of QFE patches applied.
     .EXAMPLE
-    Get-QuickFixEngineering
+    Get-Pfa2QuickFixEngineering
 
     Retrieves all the Windows OS QFE patches applied.
 
     .EXAMPLE
-    Get-QuickFixEngineering -CimSession 'myComputer'
+    Get-Pfa2QuickFixEngineering -CimSession 'myComputer'
 
     Retrieves all the Windows OS QFE patches applied to 'myConputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Get-QuickFixEngineering -CimSession $session
-    Get-HostBusAdapter -CimSession $session
+    Get-Pfa2QuickFixEngineering -CimSession $session
+    Get-Pfa2HostBusAdapter -CimSession $session
 
     Retrieves all the Windows OS QFE patches applied and host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Get-QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Get-Pfa2QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Get-QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Get-Pfa2QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Get-QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Get-Pfa2QuickFixEngineering -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Get-QuickFixEngineering
+    'myComputer' | Get-Pfa2QuickFixEngineering
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Get-QuickFixEngineering
+    $session | Get-Pfa2QuickFixEngineering
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer' with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Get-QuickFixEngineering
+    'myComputer01', 'myComputer02' | Get-Pfa2QuickFixEngineering
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Get-QuickFixEngineering
+    $prod | Get-Pfa2QuickFixEngineering
 
     Retrieves all the Windows OS QFE patches applied to 'myComputer' with current credentials.
     #>
@@ -437,7 +437,7 @@ function Get-QuickFixEngineering() {
     }
 }
 
-function Get-VolumeShadowCopy() {
+function Get-Pfa2VolumeShadowCopy() {
     <#
     .SYNOPSIS
     Exposes volume shadow copy using the Diskshadow command.
@@ -456,7 +456,7 @@ function Get-VolumeShadowCopy() {
     .OUTPUTS
     diskshadow.exe output.
     .EXAMPLE
-    Get-VolumeShadowCopy -MetadataFile prodmeta.cab -Alias Prod -ExposeAs G:
+    Get-Pfa2VolumeShadowCopy -MetadataFile prodmeta.cab -Alias Prod -ExposeAs G:
 
     Exposes the Prod shadow copy as drive letter G: using the prodmeta.cab metadata file.
 
@@ -494,7 +494,7 @@ function Get-VolumeShadowCopy() {
     }
 }
 
-function Get-WindowsDiagnosticInfo() {
+function Get-Pfa2WindowsDiagnosticInfo() {
     <#
     .SYNOPSIS
     Gathers Windows operating system, hardware, and software information, including logs for diagnostics. This cmdlet requires Administrative permissions.
@@ -515,17 +515,17 @@ function Get-WindowsDiagnosticInfo() {
     Diagnostic outputs in txt and event log files.
     Compressed zip file.
     .EXAMPLE
-    Get-WindowsDiagnosticInfo -Path '.\diagnostic_report' -Cluster
+    Get-Pfa2WindowsDiagnosticInfo -Path '.\diagnostic_report' -Cluster
 
     Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the 'diagnostic_report' folder.
 
     .EXAMPLE
-    Get-WindowsDiagnosticInfo -Cluster
+    Get-Pfa2WindowsDiagnosticInfo -Cluster
 
     Retrieves all of the operating system, hardware, software, event log, and WSFC logs into the default folder.
 
     .EXAMPLE
-    Get-WindowsDiagnosticInfo -Compress
+    Get-Pfa2WindowsDiagnosticInfo -Compress
 
     Retrieves all of the operating system, hardware, software, event log, and compresses the parent folder into a zip file that will be created in the %temp% folder.
 
@@ -686,7 +686,7 @@ function Get-Diagnostic() {
     }
 }
 
-function New-VolumeShadowCopy() {
+function New-Pfa2VolumeShadowCopy() {
     <#
     .SYNOPSIS
     Creates a new volume shadow copy using the Diskshadow command.
@@ -703,17 +703,17 @@ function New-VolumeShadowCopy() {
     .OUTPUTS
     diskshadow.exe output.
     .EXAMPLE
-    New-VolumeShadowCopy -Volume G: -Alias Prod
+    New-Pfa2VolumeShadowCopy -Volume G: -Alias Prod
 
     Creates a new volume shadow copy of volume G: and assigns an alias named Prod.
 
     .EXAMPLE
-    New-VolumeShadowCopy -Volume G:, H: -Alias Prod
+    New-Pfa2VolumeShadowCopy -Volume G:, H: -Alias Prod
 
     Creates a new volume shadow copy of volumes G: and H: and assigns an aliases named Prod and Prod2 respectively.
 
     .EXAMPLE
-    'G:', 'H:' | New-VolumeShadowCopy -Alias Prod
+    'G:', 'H:' | New-Pfa2VolumeShadowCopy -Alias Prod
 
     Creates a new volume shadow copy of volumes G: and H: and assigns an aliases named Prod and Prod2 respectively.
 
@@ -765,7 +765,7 @@ function New-VolumeShadowCopy() {
     }
 }
 
-function Register-HostVolumes() {
+function Register-Pfa2HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to online.
@@ -778,57 +778,57 @@ function Register-HostVolumes() {
     .OUTPUTS
     None
     .EXAMPLE
-    Register-HostVolumes
+    Register-Pfa2HostVolumes
 
     Set Pure FlashArray connected disks to online.
 
     .EXAMPLE
-    Register-HostVolumes -CimSession 'myComputer'
+    Register-Pfa2HostVolumes -CimSession 'myComputer'
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Register-HostVolumes -CimSession $session
-    Get-HostBusAdapter -CimSession $session
+    Register-Pfa2HostVolumes -CimSession $session
+    Get-Pfa2HostBusAdapter -CimSession $session
 
     Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Register-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Set to online all Pure FlashArray connected to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Register-HostVolumes
+    'myComputer' | Register-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Register-HostVolumes
+    $session | Register-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Register-HostVolumes
+    'myComputer01', 'myComputer02' | Register-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Register-HostVolumes
+    $prod | Register-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
@@ -872,7 +872,7 @@ enum MPIODiskLBPolicy {
     LB    = 6   # Least Blocks
 }
 
-function Set-MPIODiskLBPolicy() {
+function Set-Pfa2MPIODiskLBPolicy() {
     <#
     .SYNOPSIS
     Sets the MPIO Load Balancing policy for FlashArray disks.
@@ -893,12 +893,12 @@ function Set-MPIODiskLBPolicy() {
     .OUTPUTS
     mpclaim.exe output.
     .EXAMPLE
-    Set-MPIODiskLBPolicy -Policy LQD
+    Set-Pfa2MPIODiskLBPolicy -Policy LQD
 
     Sets the MPIO load balancing policy for all Pure disks to Least Queue Depth.
 
     .EXAMPLE
-    Set-MPIODiskLBPolicy -Policy clear
+    Set-Pfa2MPIODiskLBPolicy -Policy clear
 
     Clears the current MPIO policy for all Pure disks and sets to the default of RR.
     #>
@@ -976,7 +976,7 @@ function Backup-RegistryKey {
     }
 }
 
-function Disable-SecureChannelProtocol {
+function Disable-Pfa2SecureChannelProtocol {
     <#
     .SYNOPSIS
     Disable a secure channel protocol.
@@ -990,7 +990,7 @@ function Disable-SecureChannelProtocol {
     .OUTPUTS
     None
     .EXAMPLE
-    Disable-SecureChannelProtocol 'TLS 1.1'
+    Disable-Pfa2SecureChannelProtocol 'TLS 1.1'
 
     Disables TLS 1.1.
 
@@ -1060,7 +1060,7 @@ function Disable-SecureChannelProtocol {
     }
 }
 
-function Enable-SecureChannelProtocol {
+function Enable-Pfa2SecureChannelProtocol {
     <#
     .SYNOPSIS
     Enable a secure channel protocol.
@@ -1074,7 +1074,7 @@ function Enable-SecureChannelProtocol {
     .OUTPUTS
     None
     .EXAMPLE
-    Enable-SecureChannelProtocol 'TLS 1.2'
+    Enable-Pfa2SecureChannelProtocol 'TLS 1.2'
 
     Enables TLS 1.2.
 
@@ -1144,7 +1144,7 @@ function Enable-SecureChannelProtocol {
     }
 }
 
-function Set-TlsVersions {
+function Set-Pfa2TlsVersions {
     <#
     .SYNOPSIS
     Configures TLS secure channel protcols to follow best practice recommendations.
@@ -1157,7 +1157,7 @@ function Set-TlsVersions {
     .PARAMETER MinVersion
     Optional. '1.2' by default. Minimum allowed TLS version.
     .PARAMETER SkipBackup
-    Optional. False by default. When present, Set-TlsVersions does not make a registry backup.
+    Optional. False by default. When present, Set-Pfa2TlsVersions does not make a registry backup.
     .PARAMETER BackupFilePath
     Optional. 'protocols.reg' by default. Sets path for registry backup.
     .PARAMETER Force
@@ -1223,15 +1223,15 @@ function Set-TlsVersions {
     0..3 | ForEach-Object {
         $v = [Version]::new(1, $_)
         if ($v -lt $MinVersion) {
-            Disable-SecureChannelProtocol "TLS $v"
+            Disable-Pfa2SecureChannelProtocol "TLS $v"
         }
         else {
-            Enable-SecureChannelProtocol "TLS $v"
+            Enable-Pfa2SecureChannelProtocol "TLS $v"
         }
     }
 }
 
-function Set-WindowsPowerScheme() {
+function Set-Pfa2WindowsPowerScheme() {
     <#
     .SYNOPSIS
     Cmdlet to set the Power scheme for the Windows OS.
@@ -1246,26 +1246,26 @@ function Set-WindowsPowerScheme() {
     .OUTPUTS
     None
     .EXAMPLE
-    Set-WindowsPowerScheme
+    Set-Pfa2WindowsPowerScheme
 
     Retrieves the current Power Scheme setting, and if not set to High Performance, sets it to active.
 
     .EXAMPLE
     $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
-    Set-WindowsPowerScheme -Session $pssession
+    Set-Pfa2WindowsPowerScheme -Session $pssession
 
     Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
 
     .EXAMPLE
     $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
-    $pssession | Set-WindowsPowerScheme
+    $pssession | Set-Pfa2WindowsPowerScheme
 
     Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
 
     .EXAMPLE
     $pssession = New-PSSession -ComputerName 'computer_name' -Credential (Get-Credential)
     $prod = [pscustomobject]@{Caption = 'Prod Server'; Session = $pssession}
-    $prod | Set-WindowsPowerScheme
+    $prod | Set-Pfa2WindowsPowerScheme
 
     Retrieves the current Power Scheme setting on a remote computer, and if not set to High Performance, sets it to active.
     #>
@@ -1301,7 +1301,7 @@ function Set-WindowsPowerScheme() {
     }
 }
 
-function Test-WindowsBestPractices() {
+function Test-Pfa2WindowsBestPractices() {
     <#
     .SYNOPSIS
     Cmdlet used to retrieve hosts information, test and optionally configure MPIO (FC) and/or iSCSI settings in a Windows OS against FlashArray Best Practices.
@@ -1319,22 +1319,22 @@ function Test-WindowsBestPractices() {
     .OUTPUTS
     Output status and best practice options for every test.
     .EXAMPLE
-    Test-WindowsBestPractices
+    Test-Pfa2WindowsBestPractices
 
     Run the cmdlet against the local machine running the MPIO tests and the log is located in the %TMP%\BestPractices.log file.
 
     .EXAMPLE
-    Test-WindowsBestPractices -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
+    Test-Pfa2WindowsBestPractices -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
 
     Run the cmdlet against the local machine, run the additional iSCSI tests, and create the log file at c:\temp\mylog.log.
 
     .EXAMPLE
-    Test-WindowsBestPractices -Repair -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
+    Test-Pfa2WindowsBestPractices -Repair -IncludeIscsi -LogFilePath "c:\temp\mylog.log"
 
     Run the cmdlet against the local machine, run the additional iSCSI tests, repair settings to their recommended values, and create the log file at c:\temp\mylog.log.
 
     .EXAMPLE
-    Test-WindowsBestPractices -Repair -Confirm:$false
+    Test-Pfa2WindowsBestPractices -Repair -Confirm:$false
 
     Run the cmdlet against the local machine, repair settings to their recommended values skipping confirmation prompt.
     #>
@@ -1559,7 +1559,7 @@ function Write-Logo()
     Write-Host ''
 }
 
-function Unregister-HostVolumes() {
+function Unregister-Pfa2HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to offline.
@@ -1572,57 +1572,57 @@ function Unregister-HostVolumes() {
     .OUTPUTS
     None
     .EXAMPLE
-    Unregister-HostVolumes
+    Unregister-Pfa2HostVolumes
 
     Set Pure FlashArray connected disks to offline.
 
     .EXAMPLE
-    Unregister-HostVolumes -CimSession 'myComputer'
+    Unregister-Pfa2HostVolumes -CimSession 'myComputer'
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Unregister-HostVolumes -CimSession $session
-    Get-HostBusAdapter -CimSession $session
+    Unregister-Pfa2HostVolumes -CimSession $session
+    Get-Pfa2HostBusAdapter -CimSession $session
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Unregister-HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Set to offline all Pure FlashArray disks connected to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Unregister-HostVolumes
+    'myComputer' | Unregister-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Unregister-HostVolumes
+    $session | Unregister-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Unregister-HostVolumes
+    'myComputer01', 'myComputer02' | Unregister-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Unregister-HostVolumes
+    $prod | Unregister-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
@@ -1652,7 +1652,7 @@ function Unregister-HostVolumes() {
     }
 }
 
-function Update-DriveInformation() {
+function Update-Pfa2DriveInformation() {
     <#
     .SYNOPSIS
     Updates drive letter and assigns a label.
@@ -1671,50 +1671,50 @@ function Update-DriveInformation() {
     .OUTPUTS
     None
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S
 
     Updates the drive letter from M to S.
 
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -NewFileSystemLabel Test
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -NewFileSystemLabel Test
 
     Updates the drive letter from M to S and changes the file system label to Test.
 
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession 'myComputer'
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -CimSession 'myComputer'
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession $session
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -CimSession $session
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with previously created CIM session.
 
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Update-DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Updates the drive letter from M to S. Update is performed on 'myComputer'. Asks for credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Update-DriveInformation -DriveLetter M -NewDriveLetter S
+    $session | Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with previously created CIM session.
 
     .EXAMPLE
     $dev = [pscustomobject]@{Caption = 'Dev Server'; CimSession = 'myComputer'}
-    $dev | Update-DriveInformation -DriveLetter M -NewDriveLetter S
+    $dev | Update-Pfa2DriveInformation -DriveLetter M -NewDriveLetter S
 
     Updates the drive letter from M to S. Update is performed on 'myComputer' with current credentials.
     #>
@@ -1752,20 +1752,20 @@ function Update-DriveInformation() {
 }
 
 # Declare exports
-Export-ModuleMember -Function Get-HostBusAdapter
-Export-ModuleMember -Function Get-FlashArraySerialNumbers
-Export-ModuleMember -Function Get-QuickFixEngineering
-Export-ModuleMember -Function Get-VolumeShadowCopy
-Export-ModuleMember -Function Get-WindowsDiagnosticInfo
-Export-ModuleMember -Function Get-MPIODiskLBPolicy
-Export-ModuleMember -Function Set-MPIODiskLBPolicy
-Export-ModuleMember -Function Set-TlsVersions
-Export-ModuleMember -Function Set-WindowsPowerScheme
-Export-ModuleMember -Function New-VolumeShadowCopy
-Export-ModuleMember -Function Enable-SecureChannelProtocol
-Export-ModuleMember -Function Disable-SecureChannelProtocol
-Export-ModuleMember -Function Register-HostVolumes
-Export-ModuleMember -Function Unregister-HostVolumes
-Export-ModuleMember -Function Update-DriveInformation
-Export-ModuleMember -Function Test-WindowsBestPractices
+Export-ModuleMember -Function Get-Pfa2HostBusAdapter
+Export-ModuleMember -Function Get-Pfa2SerialNumbers
+Export-ModuleMember -Function Get-Pfa2QuickFixEngineering
+Export-ModuleMember -Function Get-Pfa2VolumeShadowCopy
+Export-ModuleMember -Function Get-Pfa2WindowsDiagnosticInfo
+Export-ModuleMember -Function Get-Pfa2MPIODiskLBolicy
+Export-ModuleMember -Function Set-Pfa2MPIODiskLBPolicy
+Export-ModuleMember -Function Set-Pfa2TlsVersions
+Export-ModuleMember -Function Set-Pfa2WindowsPowerScheme
+Export-ModuleMember -Function New-Pfa2VolumeShadowCopy
+Export-ModuleMember -Function Enable-Pfa2SecureChannelProtocol
+Export-ModuleMember -Function Disable-Pfa2SecureChannelProtocol
+Export-ModuleMember -Function Register-Pfa2HostVolumes
+Export-ModuleMember -Function Unregister-Pfa2HostVolumes
+Export-ModuleMember -Function Update-Pfa2DriveInformation
+Export-ModuleMember -Function Test-Pfa2WindowsBestPractices
 # END

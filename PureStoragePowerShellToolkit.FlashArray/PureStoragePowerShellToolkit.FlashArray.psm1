@@ -112,7 +112,7 @@ function Write-Color {
 
 #endregion Helper functions
 
-function Get-AllHostVolumeInfo() {
+function Get-Pfa2AllHostVolumeInfo() {
     <#
     .SYNOPSIS
     Retrieves Host Volume information from a FlashArray.
@@ -127,22 +127,22 @@ function Get-AllHostVolumeInfo() {
     .OUTPUTS
     Host volume information.
     .EXAMPLE
-    Get-AllHostVolumeInfo -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2AllHostVolumeInfo -Endpoint 'myarray.mydomain.com'
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-AllHostVolumeInfo -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2AllHostVolumeInfo -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-AllHostVolumeInfo
+    'myarray.mydomain.com' | Get-Pfa2AllHostVolumeInfo
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-AllHostVolumeInfo
+    'myarray01', 'myarray02' | Get-Pfa2AllHostVolumeInfo
 
     Retrieves Host Volume information from the FlashArray myarray01 and myarray02.
 
@@ -153,12 +153,12 @@ function Get-AllHostVolumeInfo() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-AllHostVolumeInfo
+    $array | Get-Pfa2AllHostVolumeInfo
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -172,7 +172,7 @@ function Get-AllHostVolumeInfo() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -205,7 +205,7 @@ function Get-AllHostVolumeInfo() {
     }
 }
 
-function Get-FlashArrayConfig() {
+function Get-Pfa2Config() {
     <#
     .SYNOPSIS
     Retrieves and outputs to a file the configuration of the FlashArray.
@@ -222,27 +222,27 @@ function Get-FlashArrayConfig() {
     .OUTPUTS
     Configuration file.
     .EXAMPLE
-    Get-FlashArrayConfig -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2Config -Endpoint 'myarray.mydomain.com'
 
     Retrieves the configuration for a FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayConfig -Endpoint 'myarray.mydomain.com' -OutFile '.\myarray.txt'
+    Get-Pfa2Config -Endpoint 'myarray.mydomain.com' -OutFile '.\myarray.txt'
 
     Retrieves the configuration for a FlashArray myarray.mydomain.com and stores it in the current path as myarray.txt.
 
     .EXAMPLE
-    Get-FlashArrayConfig -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2Config -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayConfig
+    'myarray.mydomain.com' | Get-Pfa2Config
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayConfig
+    'myarray01', 'myarray02' | Get-Pfa2Config
 
     Retrieves Host Volume information from the FlashArray myarray01 and myarray02.
 
@@ -253,12 +253,12 @@ function Get-FlashArrayConfig() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayConfig
+    $array | Get-Pfa2Config
 
     Retrieves Host Volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -279,7 +279,7 @@ function Get-FlashArrayConfig() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         $connParam = @{
@@ -319,7 +319,7 @@ function Get-FlashArrayConfig() {
     }
 }
 
-function Get-FlashArrayConnectDetails() {
+function Get-Pfa2ConnectDetails() {
     <#
     .SYNOPSIS
     Retrieves Host Connection details from a FlashArray.
@@ -334,22 +334,22 @@ function Get-FlashArrayConnectDetails() {
     .OUTPUTS
     Host Connection details.
     .EXAMPLE
-    Get-FlashArrayConnectDetails -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2ConnectDetails -Endpoint 'myarray.mydomain.com'
 
     Retrieves Host Connection details from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayConnectDetails -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2ConnectDetails -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves Host Connection details from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayConnectDetails
+    'myarray.mydomain.com' | Get-Pfa2ConnectDetails
 
     Retrieves Host Connection details from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayConnectDetails
+    'myarray01', 'myarray02' | Get-Pfa2ConnectDetails
 
     Retrieves Host Connection details from the FlashArray myarray01 and myarray02.
 
@@ -360,12 +360,12 @@ function Get-FlashArrayConnectDetails() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayConnectDetails
+    $array | Get-Pfa2ConnectDetails
 
     Retrieves Host Connection details from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -379,7 +379,7 @@ function Get-FlashArrayConnectDetails() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -419,7 +419,7 @@ function Get-FlashArrayConnectDetails() {
     }
 }
 
-function Get-FlashArrayDisconnectedVolumes() {
+function Get-Pfa2DisconnectedVolumes() {
     <#
     .SYNOPSIS
     Retrieves disconnected volume information from a FlashArray.
@@ -434,22 +434,22 @@ function Get-FlashArrayDisconnectedVolumes() {
     .OUTPUTS
     Disconnected volume information.
     .EXAMPLE
-    Get-FlashArrayDisconnectedVolumes -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2DisconnectedVolumes -Endpoint 'myarray.mydomain.com'
 
     Retrieves disconnected volume information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayDisconnectedVolumes -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2DisconnectedVolumes -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves disconnected volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayDisconnectedVolumes
+    'myarray.mydomain.com' | Get-Pfa2DisconnectedVolumes
 
     Retrieves disconnected volume information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayDisconnectedVolumes
+    'myarray01', 'myarray02' | Get-Pfa2DisconnectedVolumes
 
     Retrieves disconnected volume information from the FlashArray myarray01 and myarray02.
 
@@ -460,12 +460,12 @@ function Get-FlashArrayDisconnectedVolumes() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayDisconnectedVolumes
+    $array | Get-Pfa2DisconnectedVolumes
 
     Retrieves disconnected volume information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Get-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Get-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -479,7 +479,7 @@ function Get-FlashArrayDisconnectedVolumes() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -532,7 +532,7 @@ function Get-FlashArrayDisconnectedVolumes() {
     }
 }
 
-Function Get-FlashArrayHierarchy() {
+Function Get-Pfa2Hierarchy() {
     <#
     .SYNOPSIS
     Displays array hierarchy in relation to hosts and/or volumes.
@@ -549,27 +549,27 @@ Function Get-FlashArrayHierarchy() {
     .OUTPUTS
     FlashArray host and/or volume hierarchy.
     .EXAMPLE
-    Get-FlashArrayHierarchy -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2Hierarchy -Endpoint 'myarray.mydomain.com'
 
     Displays the hierarchy from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayHierarchy -Endpoint 'myarray.mydomain.com' -ByHost
+    Get-Pfa2Hierarchy -Endpoint 'myarray.mydomain.com' -ByHost
 
     Displays the hierarchy from the FlashArray myarray.mydomain.com at the host level.
 
     .EXAMPLE
-    Get-FlashArrayHierarchy -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2Hierarchy -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Displays the hierarchy from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayHierarchy
+    'myarray.mydomain.com' | Get-Pfa2Hierarchy
 
     Displays the hierarchy from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayHierarchy
+    'myarray01', 'myarray02' | Get-Pfa2Hierarchy
 
     Displays the hierarchy from the FlashArray myarray01 and myarray02.
 
@@ -580,12 +580,12 @@ Function Get-FlashArrayHierarchy() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayHierarchy
+    $array | Get-Pfa2Hierarchy
 
     Displays the hierarchy from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -600,7 +600,7 @@ Function Get-FlashArrayHierarchy() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -716,7 +716,7 @@ Function Get-FlashArrayHierarchy() {
     }
 }
 
-function Get-FlashArrayPgroupsConfig() {
+function Get-Pfa2PgroupsConfig() {
     <#
     .SYNOPSIS
     Retrieves Protection Group information for the FlashArray.
@@ -731,22 +731,22 @@ function Get-FlashArrayPgroupsConfig() {
     .OUTPUTS
     Protection Group information.
     .EXAMPLE
-    Get-FlashArrayPgroupsConfig -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2PgroupsConfig -Endpoint 'myarray.mydomain.com'
 
     Retrieves Protection Group information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayPgroupsConfig -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2PgroupsConfig -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves Protection Group information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayPgroupsConfig
+    'myarray.mydomain.com' | Get-Pfa2PgroupsConfig
 
     Retrieves Protection Group information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayPgroupsConfig
+    'myarray01', 'myarray02' | Get-Pfa2PgroupsConfig
 
     Retrieves Protection Group information from the FlashArray myarray01 and myarray02.
 
@@ -757,12 +757,12 @@ function Get-FlashArrayPgroupsConfig() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayPgroupsConfig
+    $array | Get-Pfa2PgroupsConfig
 
     Retrieves Protection Group information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -776,7 +776,7 @@ function Get-FlashArrayPgroupsConfig() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -832,7 +832,7 @@ function Get-FlashArrayPgroupsConfig() {
     }
 }
 
-function Get-FlashArrayQuickCapacityStats() {
+function Get-Pfa2QuickCapacityStats() {
     <#
     .SYNOPSIS
     Quick way to retrieve FlashArray capacity statistics.
@@ -847,27 +847,27 @@ function Get-FlashArrayQuickCapacityStats() {
     .OUTPUTS
     FlashArray capacity statistics.
     .EXAMPLE
-    Get-FlashArrayQuickCapacityStats -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2QuickCapacityStats -Endpoint 'myarray.mydomain.com'
 
     Retrieves capacity statistic information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayQuickCapacityStats -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2QuickCapacityStats -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves capacity statistic information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayQuickCapacityStats
+    'myarray.mydomain.com' | Get-Pfa2QuickCapacityStats
 
     Retrieves capacity statistic information from the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArrayQuickCapacityStats -Endpoint 'myarray01', 'myarray02'
+    Get-Pfa2QuickCapacityStats -Endpoint 'myarray01', 'myarray02'
 
     Retrieves capacity statistic information from the FlashArray myarray01 and myarray02.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayQuickCapacityStats
+    'myarray01', 'myarray02' | Get-Pfa2QuickCapacityStats
 
     Retrieves capacity statistic information from the FlashArray myarray01 and myarray02.
 
@@ -878,12 +878,12 @@ function Get-FlashArrayQuickCapacityStats() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayQuickCapacityStats
+    $array | Get-Pfa2QuickCapacityStats
 
     Retrieves capacity statistic information from the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -905,7 +905,7 @@ function Get-FlashArrayQuickCapacityStats() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         foreach ($e in $Endpoint) {
@@ -953,7 +953,7 @@ function Get-FlashArrayQuickCapacityStats() {
     }
 }
 
-function Get-FlashArrayRASession() {
+function Get-Pfa2RASession() {
     <#
     .SYNOPSIS
     Retrieves Remote Assist status from a FlashArray.
@@ -968,16 +968,16 @@ function Get-FlashArrayRASession() {
     .OUTPUTS
     Remote Assst status.
     .EXAMPLE
-    Get-FlashArrayRASession -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2RASession -Endpoint 'myarray.mydomain.com'
 
     Retrieves the current Remote Assist status and continues check status every 30 seconds until stopped.
 
     .EXAMPLE
-    Get-FlashArrayPgroupsConfig -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2PgroupsConfig -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves the current Remote Assist status and continues check status every 30 seconds until stopped. Asks for credentials.
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -989,7 +989,7 @@ function Get-FlashArrayRASession() {
     )
 
     if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-        $Credential = Get-PfaCredential
+        $Credential = Get-Pfa2Credential
     }
 
     try {
@@ -1018,7 +1018,7 @@ function Get-FlashArrayRASession() {
     }
 }
 
-function Get-FlashArraySpace() {
+function Get-Pfa2Space() {
     <#
     .SYNOPSIS
     Retrieves the space used and available for a FlashArray.
@@ -1033,22 +1033,22 @@ function Get-FlashArraySpace() {
     .OUTPUTS
     FlashArray space metrics.
     .EXAMPLE
-    Get-FlashArraySpace -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2Space -Endpoint 'myarray.mydomain.com'
 
     Retrieves space metrics for the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Get-FlashArraySpace -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2Space -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieves space metrics for the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArraySpace
+    'myarray.mydomain.com' | Get-Pfa2Space
 
     Retrieves space metrics for the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArraySpace
+    'myarray01', 'myarray02' | Get-Pfa2Space
 
     Retrieves space metrics for the FlashArray myarray01 and myarray02.
 
@@ -1059,12 +1059,12 @@ function Get-FlashArraySpace() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArraySpace
+    $array | Get-Pfa2Space
 
     Retrieves space metrics for the FlashArray myarray.mydomain.com. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -1078,7 +1078,7 @@ function Get-FlashArraySpace() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -1114,7 +1114,7 @@ function Get-FlashArraySpace() {
     }
 }
 
-function Get-FlashArrayStaleSnapshots() {
+function Get-Pfa2StaleSnapshots() {
     <#
     .SYNOPSIS
     Retrieves aged snapshots and allows for Deletion and Eradication of such snapshots.
@@ -1140,45 +1140,45 @@ function Get-FlashArrayStaleSnapshots() {
     .OUTPUTS
     Snapshots that are beyond the specified threshold and final results.
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com'
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
 
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com' -SnapAgeThreshold 10
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com' -SnapAgeThreshold 10
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 10 days from the current date.
 
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com' -Delete
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com' -Delete
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
     Deletes snapshots without confirmation.
 
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com' -Delete -Eradicate -Confirm:$false
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com' -Delete -Eradicate -Confirm:$false
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
     Deletes and eradicates (flagged as deleted) snapshots without confirmation.
     
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com'
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
 
     .EXAMPLE
-    Get-FlashArrayStaleSnapshots -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2StaleSnapshots -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
     Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayStaleSnapshots
+    'myarray.mydomain.com' | Get-Pfa2StaleSnapshots
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayStaleSnapshots
+    'myarray01', 'myarray02' | Get-Pfa2StaleSnapshots
 
     Retrieves Host Volume information from the FlashArray myarray01 and myarray02.
 
@@ -1189,13 +1189,13 @@ function Get-FlashArrayStaleSnapshots() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayStaleSnapshots
+    $array | Get-Pfa2StaleSnapshots
 
     Returns all snapshots from the FlashArray myarray.mydomain.com that are older than 30 days from the current date.
     Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding(SupportsShouldProcess)]
@@ -1220,7 +1220,7 @@ function Get-FlashArrayStaleSnapshots() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
 
         try {
@@ -1280,7 +1280,7 @@ function Get-FlashArrayStaleSnapshots() {
     }
 }
 
-function Get-FlashArrayVolumeGrowth() {
+function Get-Pfa2VolumeGrowth() {
     <#
     .SYNOPSIS
     Retrieves volume growth information over past X days at Y percentage of growth.
@@ -1309,7 +1309,7 @@ function Get-FlashArrayVolumeGrowth() {
     .OUTPUTS
     Volume capacity information to the console, and also to a CSV and/or HTML formatted report (if specified).
     .EXAMPLE
-    Get-FlashArrayVolumeGrowth -Endpoint 'myarray.mydomain.com'
+    Get-Pfa2VolumeGrowth -Endpoint 'myarray.mydomain.com'
 
     Retrieve volume capacity report for 'myarray.mydomain.com' comparing volumes over the last hour that:
         - volumes that are not smaller than 1GB in size
@@ -1318,7 +1318,7 @@ function Get-FlashArrayVolumeGrowth() {
         - have grown at least 10%
 
     .EXAMPLE
-    Get-FlashArrayVolumeGrowth -Endpoint 'myarray.mydomain.com' -StartTime (Get-Date).AddHours(-2) -MinimumVolumeAgeInDays 7 -GrowthPercentThreshold 15 -DoNotReportGrowthOfLessThan 50GB -DoNotReportVolSmallerThan 250GB
+    Get-Pfa2VolumeGrowth -Endpoint 'myarray.mydomain.com' -StartTime (Get-Date).AddHours(-2) -MinimumVolumeAgeInDays 7 -GrowthPercentThreshold 15 -DoNotReportGrowthOfLessThan 50GB -DoNotReportVolSmallerThan 250GB
 
     Retrieve volume capacity report for 'myarray.mydomain.com' comparing volumes over the last two hours that:
         - volumes that are not smaller than 250GB in size
@@ -1327,27 +1327,27 @@ function Get-FlashArrayVolumeGrowth() {
         - have grown at least 15%
 
     .EXAMPLE
-    Get-FlashArrayVolumeGrowth -Endpoint 'myarray.mydomain.com' -Html
+    Get-Pfa2VolumeGrowth -Endpoint 'myarray.mydomain.com' -Html
 
     Retrieve volume capacity report for 'myarray.mydomain.com' with default parameters. Create HTML report.
 
     .EXAMPLE
-    Get-FlashArrayVolumeGrowth -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
+    Get-Pfa2VolumeGrowth -Endpoint 'myarray.mydomain.com' -Credential ( Get-Credential )
 
     Retrieve volume capacity report for 'myarray.mydomain.com' with default parameters. Asks for credentials.
 
     .EXAMPLE
-    'myarray.mydomain.com' | Get-FlashArrayVolumeGrowth
+    'myarray.mydomain.com' | Get-Pfa2VolumeGrowth
 
     Retrieve volume capacity report for 'myarray.mydomain.com' with default parameters.
 
     .EXAMPLE
-    Get-FlashArrayVolumeGrowth -Endpoint 'myarray01', 'myarray02'
+    Get-Pfa2VolumeGrowth -Endpoint 'myarray01', 'myarray02'
 
     Retrieve volume capacity report for myarray01 and myarray02 with default parameters.
 
     .EXAMPLE
-    'myarray01', 'myarray02' | Get-FlashArrayVolumeGrowth
+    'myarray01', 'myarray02' | Get-Pfa2VolumeGrowth
 
     Retrieve volume capacity report for myarray01 and myarray02 with default parameters.
 
@@ -1358,12 +1358,12 @@ function Get-FlashArrayVolumeGrowth() {
         Credential = ( Get-Credential )
     }
 
-    $array | Get-FlashArrayVolumeGrowth
+    $array | Get-Pfa2VolumeGrowth
 
     Retrieve volume capacity report for 'myarray.mydomain.com' with default parameters. Asks for credentials.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -1402,7 +1402,7 @@ function Get-FlashArrayVolumeGrowth() {
 
     process {
         if (-not $Credential -or $Credential -eq [pscredential]::Empty) {
-            $Credential = Get-PfaCredential
+            $Credential = Get-Pfa2Credential
         }
     
         function Get-VolumeStats {
@@ -1504,7 +1504,7 @@ function Get-FlashArrayVolumeGrowth() {
     }
 }
 
-function Set-PfaCredential {
+function Set-Pfa2Credential {
     <#
     .SYNOPSIS
     Sets credentials for FlashArray authentication.
@@ -1527,7 +1527,7 @@ function Set-PfaCredential {
     $script:Creds = $Credential
 }
 
-function Get-PfaCredential {
+function Get-Pfa2Credential {
     <#
     .SYNOPSIS
     Gets credentials for FlashArray authentication.
@@ -1542,11 +1542,11 @@ function Get-PfaCredential {
 
     param ()
 
-    Set-PfaCredential $script:Creds
+    Set-Pfa2Credential $script:Creds
     $script:Creds
 }
 
-function Clear-PfaCredential {
+function Clear-Pfa2Credential {
     <#
     .SYNOPSIS
     Clears credentials for FlashArray authentication.
@@ -1562,7 +1562,7 @@ function Clear-PfaCredential {
     $script:Creds = $null
 }
 
-function New-FlashArrayCapacityReport() {
+function New-Pfa2CapacityReport() {
     <#
     .SYNOPSIS
     Create a formatted report that contains FlashArray Capacity Information
@@ -1581,23 +1581,23 @@ function New-FlashArrayCapacityReport() {
     .OUTPUTS
     Formatted HTML report containing retrieved data and specified options.
     .EXAMPLE
-    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com'
+    New-Pfa2CapacityReport -Endpoint 'myarray.mydomain.com'
 
     Creates 'myarray.mydomain.com' FlashArray capacity report named 'Array_Capacity_Report.html' in the %TEMP% folder.
 
     .EXAMPLE
-    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html'
+    New-Pfa2CapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html'
 
     Creates 'myarray.mydomain.com' FlashArray capacity report located at the path '.\reports\dev_array.html'.
 
     .EXAMPLE
-    New-FlashArrayCapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html' -VolumeFilter 'dev-*'
+    New-Pfa2CapacityReport -Endpoint 'myarray.mydomain.com' -OutHTMLFile '.\reports\dev_array.html' -VolumeFilter 'dev-*'
 
     Creates 'myarray.mydomain.com' FlashArray capacity report located at the path '.\reports\dev_array.html'.
     Volumes names to include matches 'dev-*' pattern.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -1609,7 +1609,7 @@ function New-FlashArrayCapacityReport() {
         [string]$OutHTMLFile = (Join-Path $env:Temp 'Array_Capacity_Report.html'),
         [ValidateNotNullOrEmpty()]
         [string]$VolumeFilter = '*',
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     # define variables
@@ -2545,7 +2545,7 @@ $ReportDateTime
     Write-Host "The report file path $(Resolve-Path $OutHTMLFile)." -ForegroundColor Green
 }
 
-function New-FlashArrayPGroupVolumes() {
+function New-Pfa2PGroupVolumes() {
     <#
     .SYNOPSIS
     Creates volumes to a new FlashArray Protection Group (PGroup).
@@ -2570,12 +2570,12 @@ function New-FlashArrayPGroupVolumes() {
     .OUTPUTS
     None
     .EXAMPLE
-    New-FlashArrayPGroupVolumes -Endpoint "myarray.mydomain.com" -PGroupPrefix "database" -VolumeSizeGB 200 -NumberOfVolumes 3
+    New-Pfa2PGroupVolumes -Endpoint "myarray.mydomain.com" -PGroupPrefix "database" -VolumeSizeGB 200 -NumberOfVolumes 3
 
     Creates 3-200GB volumes, named "database-vol1", "database-vol2", and "database-vol3". Each volume is added to the new Protection Group "database-PGroup".
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -2592,7 +2592,7 @@ function New-FlashArrayPGroupVolumes() {
         [Parameter(Mandatory)]
         [ValidateRange(1, [int]::MaxValue)]
         [int]$NumberOfVolumes,
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     # Connect to FlashArray
@@ -2619,7 +2619,7 @@ function New-FlashArrayPGroupVolumes() {
     }
 }
 
-function Remove-FlashArrayPendingDeletes() {
+function Remove-Pfa2PendingDeletes() {
     <#
     .SYNOPSIS
     Reports on pending FlashArray Volume and Snapshots deletions and optionally Eradicates them.
@@ -2635,18 +2635,18 @@ function Remove-FlashArrayPendingDeletes() {
     .OUTPUTS
     Volume and volume snapshots awaiting eradication.
     .EXAMPLE
-    Remove-FlashArrayPendingDeletes -Endpoint 'myarray.mydomain.com'
+    Remove-Pfa2PendingDeletes -Endpoint 'myarray.mydomain.com'
 
     Reports and prompts for eradication on pending Volume and Snapshots deletions on the FlashArray myarray.mydomain.com.
 
     .EXAMPLE
-    Remove-FlashArrayPendingDeletes -Endpoint 'myarray.mydomain.com'
+    Remove-Pfa2PendingDeletes -Endpoint 'myarray.mydomain.com'
 
     Reports on pending Volume and Snapshots deletions on the FlashArray myarray.mydomain.com.
     Eradicates Volume and Snapshots without confirmation.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
@@ -2654,7 +2654,7 @@ function Remove-FlashArrayPendingDeletes() {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Endpoint,
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     # Connect to FlashArray
@@ -2725,7 +2725,7 @@ function Remove-FlashArrayPendingDeletes() {
     }
 }
 
-function Restore-PfaPGroupVolumeSnapshots() {
+function Restore-Pfa2PGroupVolumeSnapshots() {
     <#
     .SYNOPSIS
     Recover all of the volumes from a protection group (PGroup) snapshot.
@@ -2748,19 +2748,19 @@ function Restore-PfaPGroupVolumeSnapshots() {
     .OUTPUTS
     None
     .EXAMPLE
-    Restore-PfaPGroupVolumeSnapshots -Endpoint 'myarray.mydomain.com' –ProtectionGroup 'Dev-PGroup' –SnapshotName 'Dev-PGroup.01' –Prefix 'TEST'
+    Restore-Pfa2PGroupVolumeSnapshots -Endpoint 'myarray.mydomain.com' –ProtectionGroup 'Dev-PGroup' –SnapshotName 'Dev-PGroup.01' –Prefix 'TEST'
 
     Restores snapshot 'Dev-PGroup.01' from the protection group 'Dev-PGroup', adds the prefix of 'TEST' to
     recovered volumes names on the FlashArray 'myarray.mydomain.com'.
 
     .EXAMPLE
-    Restore-PfaPGroupVolumeSnapshots -Endpoint 'myarray.mydomain.com' –ProtectionGroup 'Dev-PGroup' –SnapshotName 'Dev-PGroup.01' –Prefix 'TEST' -HostName 'test-vm-01'
+    Restore-Pfa2PGroupVolumeSnapshots -Endpoint 'myarray.mydomain.com' –ProtectionGroup 'Dev-PGroup' –SnapshotName 'Dev-PGroup.01' –Prefix 'TEST' -HostName 'test-vm-01'
 
     Restores snapshot 'Dev-PGroup.01' from the protection group 'Dev-PGroup', adds the prefix of 'TEST' to
     recovered volumes names, and attaches them to the host 'test-vm-01' on the FlashArray 'myarray.mydomain.com'.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding()]
@@ -2779,7 +2779,7 @@ function Restore-PfaPGroupVolumeSnapshots() {
         [string]$Prefix,
         [ValidateNotNullOrEmpty()]
         [string]$HostName,
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     # Connect to FlashArray
@@ -2812,7 +2812,7 @@ function Restore-PfaPGroupVolumeSnapshots() {
     }
 }
 
-function Sync-FlashArrayHosts() {
+function Sync-Pfa2Hosts() {
     <#
     .SYNOPSIS
     Synchronizes the hosts amd host protocols between two FlashArrays.
@@ -2833,27 +2833,27 @@ function Sync-FlashArrayHosts() {
     .OUTPUTS
     None
     .EXAMPLE
-    Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC
+    Sync-Pfa2Hosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC
 
     Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array'.
 
     .EXAMPLE
-    Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -Confirm:$false
+    Sync-Pfa2Hosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -Confirm:$false
 
     Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array' skipping confirmation prompt.
 
     .EXAMPLE
-    Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -HostName 'vm-*'
+    Sync-Pfa2Hosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol FC -HostName 'vm-*'
 
     Synchronizes the hosts and hosts FC WWNs from the 'dev-array' to the 'test-array'. Hosts names to synchronize matches 'vm-*' pattern.
 
     .EXAMPLE
-    Sync-FlashArrayHosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol iSCSI
+    Sync-Pfa2Hosts -SourceArray 'dev-array' -TargetArray 'test-array' -Protocol iSCSI
 
     Synchronizes the hosts and hosts iSCSI IQNs from the 'dev-array' to the 'test-array'.
 
     .NOTES
-    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+    This cmdlet can utilize the global credentials variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
     #>
 
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
@@ -2869,7 +2869,7 @@ function Sync-FlashArrayHosts() {
         [string]$Protocol,
         [ValidateNotNullOrEmpty()]
         [string]$HostName = '*',
-        [pscredential]$Credential = ( Get-PfaCredential )
+        [pscredential]$Credential = ( Get-Pfa2Credential )
     )
 
     # Connect to source FlashArray
@@ -2931,23 +2931,23 @@ function Sync-FlashArrayHosts() {
 }
 
 # Declare exports
-Export-ModuleMember -Function Get-AllHostVolumeInfo
-Export-ModuleMember -Function Get-FlashArrayDisconnectedVolumes
-Export-ModuleMember -Function Get-FlashArraySpace
-Export-ModuleMember -Function Get-FlashArrayStaleSnapshots
-Export-ModuleMember -Function Get-FlashArrayPgroupsConfig
-Export-ModuleMember -Function Get-FlashArrayConfig
-Export-ModuleMember -Function Get-FlashArrayHierarchy
-Export-ModuleMember -Function Get-FlashArrayQuickCapacityStats
-Export-ModuleMember -Function Get-FlashArrayRASession
-Export-ModuleMember -Function Get-FlashArrayVolumeGrowth
-Export-ModuleMember -Function Get-FlashArrayConnectDetails
-Export-ModuleMember -Function Remove-FlashArrayPendingDeletes
-Export-ModuleMember -Function Restore-PfaPGroupVolumeSnapshots
-Export-ModuleMember -Function Sync-FlashArrayHosts
-Export-ModuleMember -Function New-FlashArrayPGroupVolumes
-Export-ModuleMember -Function New-FlashArrayCapacityReport
-Export-ModuleMember -Function Get-PfaCredential
-Export-ModuleMember -Function Set-PfaCredential
-Export-ModuleMember -Function Clear-PfaCredential
+Export-ModuleMember -Function Get-Pfa2AllHostVolumeInfo
+Export-ModuleMember -Function Get-Pfa2DisconnectedVolumes
+Export-ModuleMember -Function Get-Pfa2Space
+Export-ModuleMember -Function Get-Pfa2StaleSnapshots
+Export-ModuleMember -Function Get-Pfa2PgroupsConfig
+Export-ModuleMember -Function Get-Pfa2Config
+Export-ModuleMember -Function Get-Pfa2Hierarchy
+Export-ModuleMember -Function Get-Pfa2QuickCapacityStats
+Export-ModuleMember -Function Get-Pfa2RASession
+Export-ModuleMember -Function Get-Pfa2VolumeGrowth
+Export-ModuleMember -Function Get-Pfa2ConnectDetails
+Export-ModuleMember -Function Remove-Pfa2PendingDeletes
+Export-ModuleMember -Function Restore-Pfa2PGroupVolumeSnapshots
+Export-ModuleMember -Function Sync-Pfa2Hosts
+Export-ModuleMember -Function New-Pfa2PGroupVolumes
+Export-ModuleMember -Function New-Pfa2CapacityReport
+Export-ModuleMember -Function Get-Pfa2Credential
+Export-ModuleMember -Function Set-Pfa2Credential
+Export-ModuleMember -Function Clear-Pfa2Credential
 # END

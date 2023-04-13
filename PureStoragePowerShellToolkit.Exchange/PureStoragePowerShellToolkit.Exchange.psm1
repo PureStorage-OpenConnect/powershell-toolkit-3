@@ -347,7 +347,7 @@ function Test-BusType() {
     -not @($busType | Where-Object { $script:supportedBusTypes -notcontains $_ }).Count
 }
 
-function Dismount-ExchangeBackup() {
+function Dismount-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Unexposes a mailbox database backup.
@@ -362,15 +362,15 @@ function Dismount-ExchangeBackup() {
     .OUTPUTS
     None
     .EXAMPLE
-    Dismount-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
+    Dismount-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
 
     Unexposes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    PS C:\>$backup = Get-ExchangeBackup 'db_1708' -Latest 1
+    PS C:\>$backup = Get-Pfa2ExchangeBackup 'db_1708' -Latest 1
 
-    PS C:\>$mount_point = $backup | Mount-ExchangeBackup
+    PS C:\>$mount_point = $backup | Mount-Pfa2ExchangeBackup
 
-    PS C:\>$backup | Dismount-ExchangeBackup
+    PS C:\>$backup | Dismount-Pfa2ExchangeBackup
 
     Exposes the latest database db_1708 backup and then unexposes it.
     .NOTES
@@ -445,7 +445,7 @@ function Dismount-ExchangeBackup() {
     }
 }
 
-function Enter-ExchangeBackupExposeSession() {
+function Enter-Pfa2ExchangeBackupExposeSession() {
     <#
     .SYNOPSIS
     Starts a mailbox database backup expose session.
@@ -462,7 +462,7 @@ function Enter-ExchangeBackupExposeSession() {
     .OUTPUTS
     None
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 1 | Enter-ExchangeBackupExposeSession
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 1 | Enter-Pfa2ExchangeBackupExposeSession
 
     Type 'exit' to end the expose session, cleanup and unexpose the shadow copy.
     [db_1708]: PS C:\Program Files\Pure Storage\VSS\Exchange\db_1708\03_29_2023__12_24_15>> dir
@@ -481,7 +481,7 @@ function Enter-ExchangeBackupExposeSession() {
 
     Starts an interactive session.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 1 | Enter-ExchangeBackupExposeSession -ScriptBlock {"DB Name: {0}`nAlias: {1}`nMount point: {2}" -f $args}
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 1 | Enter-Pfa2ExchangeBackupExposeSession -ScriptBlock {"DB Name: {0}`nAlias: {1}`nMount point: {2}" -f $args}
 
     DB Name: db_1708
     Alias: 03_29_2023__12_24_15
@@ -519,7 +519,7 @@ function Enter-ExchangeBackupExposeSession() {
                 continue
             }
 
-            $mp_root_path = Mount-ExchangeBackup -DatabaseName $db_name -Alias $Alias -Confirm:$false
+            $mp_root_path = Mount-Pfa2ExchangeBackup -DatabaseName $db_name -Alias $Alias -Confirm:$false
             try {
                 $current_location = Get-Location
                 Set-Location $mp_root_path
@@ -544,7 +544,7 @@ function Enter-ExchangeBackupExposeSession() {
                 }
             }
             finally {
-                Dismount-ExchangeBackup -DatabaseName $db_name -Alias $Alias -Confirm:$false
+                Dismount-Pfa2ExchangeBackup -DatabaseName $db_name -Alias $Alias -Confirm:$false
             }
         }
     }
@@ -554,7 +554,7 @@ function Enter-ExchangeBackupExposeSession() {
     }
 }
 
-function Get-ExchangeBackup() {
+function Get-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Gets a mailbox database backup.
@@ -575,47 +575,47 @@ function Get-ExchangeBackup() {
     .INPUTS
     System.String
     .EXAMPLE
-    Get-ExchangeBackup
+    Get-Pfa2ExchangeBackup
 
     Gets all backups of all mailbox databases.
     .EXAMPLE
-    Get-ExchangeBackup -DatabaseName 'db_1708'
+    Get-Pfa2ExchangeBackup -DatabaseName 'db_1708'
 
     Gets database db_1708 backups.
     .EXAMPLE
-    Get-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
+    Get-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
 
     Gets database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-ExchangeBackup -Alias '03_27_2023__*'
+    Get-Pfa2ExchangeBackup -Alias '03_27_2023__*'
 
     Gets backups with an alias that matches the pattern 03_27_2023__*.
     .EXAMPLE
-    Get-ExchangeBackup -SerialNumber '*2B8C'
+    Get-Pfa2ExchangeBackup -SerialNumber '*2B8C'
 
     Gets backups with an original volume serial number that matches the pattern *2B8C.
     .EXAMPLE
-    Get-ExchangeBackup -Latest 1
+    Get-Pfa2ExchangeBackup -Latest 1
 
     Gets the most recent backup of every database.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 2
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 2
 
     Gets two latest backups of database named db_1708.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Before 'Friday, March 24, 2023'
+    Get-Pfa2ExchangeBackup 'db_1708' -Before 'Friday, March 24, 2023'
 
     Gets database db_1708 backups created before Friday, March 24, 2023.
     .EXAMPLE
-    Get-ExchangeBackup -After (Get-Date).AddDays(-30)
+    Get-Pfa2ExchangeBackup -After (Get-Date).AddDays(-30)
 
     Gets backups created in last 30 days.
     .EXAMPLE
-    Get-MailboxDatabase 'db_1708' | Get-ExchangeBackup
+    Get-MailboxDatabase 'db_1708' | Get-Pfa2ExchangeBackup
 
     Gets database db_1708 backups.
     .EXAMPLE
-    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Get-ExchangeBackup
+    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Get-Pfa2ExchangeBackup
 
     Gets database db_1708 backups.
     .NOTES
@@ -701,7 +701,7 @@ function Get-ExchangeBackup() {
     }
 }
 
-function Mount-ExchangeBackup() {
+function Mount-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Exposes a mailbox database backup.
@@ -714,31 +714,31 @@ function Mount-ExchangeBackup() {
     .INPUTS
     System.String
     .EXAMPLE
-    Mount-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
+    Mount-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
 
     Exposes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 1 | Mount-ExchangeBackup
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 1 | Mount-Pfa2ExchangeBackup
 
     Exposes the latest database db_1708 backup.
     .EXAMPLE
-    'db_1708' | Mount-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    'db_1708' | Mount-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Exposes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-MailboxDatabase 'db_1708' | Mount-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    Get-MailboxDatabase 'db_1708' | Mount-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Exposes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Mount-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Mount-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Exposes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    'db_1708', 'ha_1809' | Mount-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    'db_1708', 'ha_1809' | Mount-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Exposes database db_1708 and database ha_1809 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-ExchangeBackup | Out-GridView -PassThru | Mount-ExchangeBackup
+    Get-Pfa2ExchangeBackup | Out-GridView -PassThru | Mount-Pfa2ExchangeBackup
 
     Exposes database backup selected by user.
     .NOTES
@@ -824,7 +824,7 @@ function Mount-ExchangeBackup() {
     }
 }
 
-function New-ExchangeBackup() {
+function New-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Creates a new mailbox database backup.
@@ -837,27 +837,27 @@ function New-ExchangeBackup() {
     .INPUTS
     System.String
     .EXAMPLE
-    New-ExchangeBackup -DatabaseName 'db_1708'
+    New-Pfa2ExchangeBackup -DatabaseName 'db_1708'
 
     Creates database db_1708 full backup.
     .EXAMPLE
-    New-ExchangeBackup 'db_1708' -CopyBackup
+    New-Pfa2ExchangeBackup 'db_1708' -CopyBackup
 
     Creates database db_1708 copy backup.
     .EXAMPLE
-    'db_1708' | New-ExchangeBackup
+    'db_1708' | New-Pfa2ExchangeBackup
 
     Creates database db_1708 full backup.
     .EXAMPLE
-    Get-MailboxDatabase 'db_1708' | New-ExchangeBackup
+    Get-MailboxDatabase 'db_1708' | New-Pfa2ExchangeBackup
 
     Creates database db_1708 full backup.
     .EXAMPLE
-    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | New-ExchangeBackup
+    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | New-Pfa2ExchangeBackup
 
     Creates database db_1708 full backup.
     .EXAMPLE
-    'db_1708', 'ha_1809' | New-ExchangeBackup
+    'db_1708', 'ha_1809' | New-Pfa2ExchangeBackup
 
     Creates full backups of databases db_1708 and ha_1809.
     .NOTES
@@ -946,7 +946,7 @@ function New-ExchangeBackup() {
     }
 }
 
-function Remove-ExchangeBackup() {
+function Remove-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Deletes a mailbox database backup.
@@ -965,27 +965,27 @@ function Remove-ExchangeBackup() {
     .OUTPUTS
     None
     .EXAMPLE
-    Remove-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
+    Remove-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
 
     Deletes database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Remove-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06' -Confirm:$false
+    Remove-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06' -Confirm:$false
 
     Deletes database db_1708 backup 03_27_2023__21_30_06 skipping confirmation prompt.
     .EXAMPLE
-    Remove-ExchangeBackup -DatabaseName 'db_1708' -Retain 2
+    Remove-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Retain 2
 
     Deletes old database db_1708 backups except two most recent ones.
     .EXAMPLE
-    Get-ExchangeBackup -DatabaseName 'db_1708' -Before 'Friday, March 24, 2023' | Remove-ExchangeBackup
+    Get-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Before 'Friday, March 24, 2023' | Remove-Pfa2ExchangeBackup
 
     Deletes database db_1708 backups created before Friday, March 24, 2023.
     .EXAMPLE
-    Get-MailboxDatabase 'db_1708' | Remove-ExchangeBackup -Retain 1
+    Get-MailboxDatabase 'db_1708' | Remove-Pfa2ExchangeBackup -Retain 1
 
     Deletes database db_1708 backups except the most recent one.
     .EXAMPLE
-    'db_1708', 'ha_1809' | Remove-ExchangeBackup -Retain 1
+    'db_1708', 'ha_1809' | Remove-Pfa2ExchangeBackup -Retain 1
 
     Deletes all backups of db_1708 and ha_1809 databases retaining the most recent backup of each.
     .NOTES
@@ -1068,7 +1068,7 @@ function Remove-ExchangeBackup() {
     }
 }
 
-function Restore-ExchangeBackup() {
+function Restore-Pfa2ExchangeBackup() {
     <#
     .SYNOPSIS
     Restores a mailbox database backup.
@@ -1087,39 +1087,39 @@ function Restore-ExchangeBackup() {
     .OUTPUTS
     None
     .EXAMPLE
-    Restore-ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
+    Restore-Pfa2ExchangeBackup -DatabaseName 'db_1708' -Alias '03_27_2023__21_30_06'
 
     Restores database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 1 | Restore-ExchangeBackup
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 1 | Restore-Pfa2ExchangeBackup
 
     Restores the latest database db_1708 backup.
     .EXAMPLE
-    Get-ExchangeBackup 'db_1708' -Latest 1 | Restore-ExchangeBackup -Confirm:$false
+    Get-Pfa2ExchangeBackup 'db_1708' -Latest 1 | Restore-Pfa2ExchangeBackup -Confirm:$false
 
     Restores the latest database db_1708 backup skipping confirmation prompt.
     .EXAMPLE
-    Restore-ExchangeBackup -DatabaseName 'ha_1809' -Alias '03_27_2023__21_30_06' -ExcludeLog
+    Restore-Pfa2ExchangeBackup -DatabaseName 'ha_1809' -Alias '03_27_2023__21_30_06' -ExcludeLog
 
     Restores database ha_1809 backup 03_27_2023__21_30_06 excluding transaction log volume.
     .EXAMPLE
-    'db_1708' | Restore-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    'db_1708' | Restore-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Restores database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-MailboxDatabase 'db_1708' | Restore-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    Get-MailboxDatabase 'db_1708' | Restore-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Restores database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Restore-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    Get-MailboxDatabaseCopyStatus 'db_1708' -Local | Restore-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Restores database db_1708 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    'db_1708', 'ha_1809' | Restore-ExchangeBackup -Alias '03_27_2023__21_30_06'
+    'db_1708', 'ha_1809' | Restore-Pfa2ExchangeBackup -Alias '03_27_2023__21_30_06'
 
     Restores database db_1708 and database ha_1809 backup 03_27_2023__21_30_06.
     .EXAMPLE
-    Get-ExchangeBackup | Out-GridView -PassThru | Restore-ExchangeBackup
+    Get-Pfa2ExchangeBackup | Out-GridView -PassThru | Restore-Pfa2ExchangeBackup
 
     Restores database backup selected by user.
     .NOTES
@@ -1245,11 +1245,11 @@ function Restore-ExchangeBackup() {
 }
 
 # Declare exports
-Export-ModuleMember -Function Get-ExchangeBackup
-Export-ModuleMember -Function New-ExchangeBackup
-Export-ModuleMember -Function Remove-ExchangeBackup
-Export-ModuleMember -Function Restore-ExchangeBackup
-Export-ModuleMember -Function Enter-ExchangeBackupExposeSession
-Export-ModuleMember -Function Mount-ExchangeBackup
-Export-ModuleMember -Function Dismount-ExchangeBackup
+Export-ModuleMember -Function Get-Pfa2ExchangeBackup
+Export-ModuleMember -Function New-Pfa2ExchangeBackup
+Export-ModuleMember -Function Remove-Pfa2ExchangeBackup
+Export-ModuleMember -Function Restore-Pfa2ExchangeBackup
+Export-ModuleMember -Function Enter-Pfa2ExchangeBackupExposeSession
+Export-ModuleMember -Function Mount-Pfa2ExchangeBackup
+Export-ModuleMember -Function Dismount-Pfa2ExchangeBackup
 # END

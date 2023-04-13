@@ -87,22 +87,22 @@ FormatsToProcess = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    'Get-HostBusAdapter',
-    'Get-FlashArraySerialNumbers',
-    'Get-QuickFixEngineering',
-    'Get-VolumeShadowCopy',
-    'Get-WindowsDiagnosticInfo',
-    'Get-MPIODiskLBPolicy',
-    'Set-MPIODiskLBPolicy',
-    'Set-TlsVersions',
-    'Set-WindowsPowerScheme',
-    'New-VolumeShadowCopy',
-    'Enable-SecureChannelProtocol',
-    'Disable-SecureChannelProtocol',
-    'Register-HostVolumes',
-    'Unregister-HostVolumes',
-    'Update-DriveInformation',
-    'Test-WindowsBestPractices'
+    'Get-Pfa2HostBusAdapter',
+    'Get-Pfa2SerialNumbers',
+    'Get-Pfa2QuickFixEngineering',
+    'Get-Pfa2VolumeShadowCopy',
+    'Get-Pfa2WindowsDiagnosticInfo',
+    'Get-Pfa2MPIODiskLBolicy',
+    'Set-Pfa2MPIODiskLBPolicy',
+    'Set-Pfa2TlsVersions',
+    'Set-Pfa2WindowsPowerScheme',
+    'New-Pfa2VolumeShadowCopy',
+    'Enable-Pfa2SecureChannelProtocol',
+    'Disable-Pfa2SecureChannelProtocol',
+    'Register-Pfa2HostVolumes',
+    'Unregister-Pfa2HostVolumes',
+    'Update-Pfa2DriveInformation',
+    'Test-Pfa2WindowsBestPractices'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

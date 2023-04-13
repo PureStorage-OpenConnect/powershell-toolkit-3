@@ -113,7 +113,7 @@ function Write-Color {
 
 #endregion Helper functions
 
-function Invoke-DynamicDataMasking {
+function Invoke-Pfa2DynamicDataMasking {
     <#
 .SYNOPSIS
 A PowerShell function to apply data masks to database columns using the SQL Server dynamic data masking feature.
@@ -151,12 +151,12 @@ Required. The name of the database that data masking is to be applied to.
 Optional. Credential for the SQL Server instance.
 
 .EXAMPLE
-Invoke-DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression
+Invoke-Pfa2DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression
 
 Applies data masks to database columns using the SQL Server dynamic data masking feature.
 
 .EXAMPLE
-Invoke-DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -SqlCredential (Get-Credential)
+Invoke-Pfa2DynamicDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -SqlCredential (Get-Credential)
 
 Applies data masks to database columns using the SQL Server dynamic data masking feature. Asks for SQL Server instance credentials.
 
@@ -222,7 +222,7 @@ END;
     Invoke-DbaQuery -Query $sql @PSBoundParameters
 }
 
-function Invoke-FlashArrayDbRefresh {
+function Invoke-Pfa2DbRefresh {
 <#
 .SYNOPSIS
 A PowerShell function to refresh one or more SQL Server databases (the destination) from either a snapshot, volume, or database.
@@ -270,67 +270,67 @@ Optional. Specifying this switch will cause refresh target databases for be forc
 
 .PARAMETER ApplyDataMasks
 Optional. Specifying this optional flag will cause data masks to be applied, in the sense that function
-Invoke-DynamicDataMasking will be invoked from this function. For documentation on Invoke-DynamicDataMasking,
-use the command Get-Help Invoke-DynamicDataMasking -Detailed.
+Invoke-Pfa2DynamicDataMasking will be invoked from this function. For documentation on Invoke-Pfa2DynamicDataMasking,
+use the command Get-Help Invoke-Pfa2DynamicDataMasking -Detailed.
 
 .PARAMETER StaticDataMaskFile
 Optional. Specifying this optional flag will cause static data masks to be applied, in the sense that function
-Invoke-StaticDataMasking will be invoked from this function. For documentation on Invoke-StaticDataMasking,
-use the command Get-Help Invoke-StaticDataMasking -Detailed.
+Invoke-Pfa2StaticDataMasking will be invoked from this function. For documentation on Invoke-Pfa2StaticDataMasking,
+use the command Get-Help Invoke-Pfa2StaticDataMasking -Detailed.
 
 .PARAMETER JobPollInterval
 Optional. Interval at which background job status is poll. Default is 1 second.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -SourceSnapshotName 'devops.snap05' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -SourceSnapshotName 'devops.snap05' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from 'devops.snap05' snapshot on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -Snapshot 'devops.snap05' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -Snapshot 'devops.snap05' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from 'devops.snap05' snapshot on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -SourceVolumeName 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -SourceVolumeName 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from 'devops' volume on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from 'devops' volume on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -PromptForSnapshot
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -PromptForSnapshot
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from a snapshot selected from a list of snapshots
 associated with the 'devops' volume on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -SourceSqlInstance 'devops-prod' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -SourceSqlInstance 'devops-prod' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from the volume on wich database on the 'devops-prod' SQL Server instance resides on.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -SourceSqlInstance 'devops-prod' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -PromptForSnapshot
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -SourceSqlInstance 'devops-prod' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -PromptForSnapshot
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from a snapshot selected from a list of snapshots
 associated with the volume on wich database on the 'devops-prod' SQL Server instance resides on.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst01', 'devops-tst02' -Endpoint 'myarray.mydomain.com'
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst01', 'devops-tst02' -Endpoint 'myarray.mydomain.com'
 
 Refresh 'devops-db' database on the 'devops-tst01' and 'devops-tst02' SQL Server instances from 'devops' volume on the 'myarray.mydomain.com' FlashArray.
 
 .EXAMPLE
-Invoke-FlashArrayDbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -ForceOffline
+Invoke-Pfa2DbRefresh -DatabaseName 'devops-db' -Volume 'devops' -SqlInstance 'devops-tst' -Endpoint 'myarray.mydomain.com' -ForceOffline
 
 Refresh 'devops-db' database on the 'devops-tst' SQL Server instance from 'devops' volume on the 'myarray.mydomain.com' FlashArray.
 The database on the 'devops-tst' SQL Server instance is forced offline prior to its underlying volume being overwritten.
 
 .NOTES
-This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
 
 Known Restrictions
 ------------------
@@ -369,7 +369,7 @@ Note that it has dependencies on the dbatools module which is installed with thi
         [switch]$ApplyDataMask,
         [string]$StaticDataMaskFile,
         [int]$JobPollInterval = 1,
-        [pscredential]$Credential = (Get-PfaCredential)
+        [pscredential]$Credential = (Get-Pfa2Credential)
     )
 
     trap {
@@ -618,14 +618,14 @@ function CoreDbRefresh {
 
     if ($applyDataMask) {
         $goal = "apply dynamic data masking to $databaseName"
-        Invoke-DynamicDataMasking -SqlInstance $instance -Database $databaseName | Out-Null
+        Invoke-Pfa2DynamicDataMasking -SqlInstance $instance -Database $databaseName | Out-Null
 
         Write-Color 'Dynamic data masking'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
     }
 
     if ($staticDataMaskFile) {
         $goal = "apply static data masking to $databaseName"
-        Invoke-StaticDataMasking -SqlInstance $instance -Database $databaseName -DataMaskFile $staticDataMaskFile | Out-Null
+        Invoke-Pfa2StaticDataMasking -SqlInstance $instance -Database $databaseName -DataMaskFile $staticDataMaskFile | Out-Null
 
         Write-Color 'Static data masking'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
     }
@@ -636,7 +636,7 @@ function CoreDbRefresh {
     Write-Color 'Repair orphaned users'.PadRight($x), 'DONE'.PadLeft($s) -ForegroundColor Yellow, Green
 }
 
-function Invoke-StaticDataMasking {
+function Invoke-Pfa2StaticDataMasking {
 <#
 .SYNOPSIS
 A PowerShell function to statically mask data in char, varchar and/or nvarchar columns using a MD5 hashing function.
@@ -664,12 +664,12 @@ Optional. Applies data masking only on specified tables, ignoring other tables i
 Optional. Credential for the SQL Server instance.
 
 .EXAMPLE
-Invoke-StaticDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -DataMaskFile 'C:\devops\tpch-no-compression.tables.json'
+Invoke-Pfa2StaticDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -DataMaskFile 'C:\devops\tpch-no-compression.tables.json'
 
 Statically masks data in columns specified by JSON file.
 
 .EXAMPLE
-Invoke-StaticDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -DataMaskFile 'C:\devops\tpch-no-compression.tables.json' -SqlCredential (Get-Credential)
+Invoke-Pfa2StaticDataMasking -SqlInstance Z-STN-WIN2016-A\DEVOPSDEV -Database tpch-no-compression -DataMaskFile 'C:\devops\tpch-no-compression.tables.json' -SqlCredential (Get-Credential)
 
 Statically masks data in columns specified by JSON file. Asks for SQL Server instance credentials.
 
@@ -735,7 +735,7 @@ Note that it has dependencies on the dbatools module which is installed with thi
     }
 }
 
-function New-FlashArrayDbSnapshot {
+function New-Pfa2DbSnapshot {
     <#
 .SYNOPSIS
 A PowerShell function to create a FlashArray snapshot of the volume that a database resides on.
@@ -760,22 +760,22 @@ Optional. Credential for the SQL Server instance.
 Optional. Credential for the FlashArray.
 
 .EXAMPLE
-New-FlashArrayDbSnapshot -SqlInstance devops-prd -Database devops-db -Endpoint myarray.mydomain.com
+New-Pfa2DbSnapshot -SqlInstance devops-prd -Database devops-db -Endpoint myarray.mydomain.com
 
 Creates a snapshot of volume on the myarray.mydomain.com FlashArray that stores the devops-db database on the devops-prd instance.
 
 .EXAMPLE
-New-FlashArrayDbSnapshot -SqlInstance devops-prd -Database devops-db -Endpoint myarray.mydomain.com -Credential (Get-Credential)
+New-Pfa2DbSnapshot -SqlInstance devops-prd -Database devops-db -Endpoint myarray.mydomain.com -Credential (Get-Credential)
 
 Creates a snapshot of volume on the myarray.mydomain.com FlashArray that stores the devops-db database on the devops-prd instance. Asks for FlashArray credentials.
 
 .EXAMPLE
-New-FlashArrayDbSnapshot -SqlInstance devops-prd -Database devops-db -SqlCredential (Get-Credential) -Endpoint myarray.mydomain.com
+New-Pfa2DbSnapshot -SqlInstance devops-prd -Database devops-db -SqlCredential (Get-Credential) -Endpoint myarray.mydomain.com
 
 Creates a snapshot of volume on the myarray.mydomain.com FlashArray that stores the devops-db database on the devops-prd instance. Asks for SQL Server instance credentials.
 
 .NOTES
-This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-PfaCredential.
+This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
 
 Known Restrictions
 ------------------
@@ -790,7 +790,7 @@ Note that it has dependencies on the dbatools module which is installed with thi
         [parameter(mandatory = $true)] [string] $Database,
         [parameter(mandatory = $true)] [string] $Endpoint,
         [parameter()] [pscredential] $SqlCredential,
-        [Parameter()] [pscredential] $Credential = ( Get-PfaCredential )
+        [Parameter()] [pscredential] $Credential = ( Get-Pfa2Credential )
     )
 
     $sqlParams = @{
@@ -883,8 +883,8 @@ Note that it has dependencies on the dbatools module which is installed with thi
 }
 
 # Declare exports
-Export-ModuleMember -Function Invoke-DynamicDataMasking
-Export-ModuleMember -Function Invoke-StaticDataMasking
-Export-ModuleMember -Function New-FlashArrayDbSnapshot
-Export-ModuleMember -Function Invoke-FlashArrayDbRefresh
+Export-ModuleMember -Function Invoke-Pfa2DynamicDataMasking
+Export-ModuleMember -Function Invoke-Pfa2StaticDataMasking
+Export-ModuleMember -Function New-Pfa2DbSnapshot
+Export-ModuleMember -Function Invoke-Pfa2DbRefresh
 # END

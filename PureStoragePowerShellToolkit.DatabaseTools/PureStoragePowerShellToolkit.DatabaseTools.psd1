@@ -96,10 +96,10 @@ FormatsToProcess = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    'Invoke-DynamicDataMasking',
-    'Invoke-StaticDataMasking',
-    'New-FlashArrayDbSnapshot',
-    'Invoke-FlashArrayDbRefresh'
+    'Invoke-Pfa2DynamicDataMasking',
+    'Invoke-Pfa2StaticDataMasking',
+    'New-Pfa2DbSnapshot',
+    'Invoke-Pfa2DbRefresh'
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
