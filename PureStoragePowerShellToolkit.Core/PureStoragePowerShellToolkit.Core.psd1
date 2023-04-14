@@ -2,9 +2,9 @@
     ===========================================================================
     Created by:   	FlashArray Integrations and Evangelism Team @ Pure Storage
     Organization: 	Pure Storage, Inc.
-    Filename:     	PureStoragePowerShellToolkit.psd1
+    Filename:     	PureStoragePowerShellToolkit.Core.psd1
     Copyright:		(c) 2023 Pure Storage, Inc.
-    Module Name: 	PureStoragePowerShellToolkit
+    Module Name: 	PureStoragePowerShellToolkit.Core
     Description: 	PowerShell Script Module Manifest (.psd1)
     -------------------------------------------------------------------------
     Disclaimer
@@ -35,7 +35,7 @@ ModuleVersion = '3.0.0.3'
 #CompatiblePSEditions  = @("Desktop", "Core")
 
 # ID used to uniquely identify this module
-GUID = 'e7b43c4e-8e89-4e4f-9172-18d19107ada9'
+GUID = '1f28401d-4cb0-46df-921e-94c5daa2bfee'
 
 # Author of this module
 Author = 'Pure Storage'
@@ -70,20 +70,12 @@ ProcessorArchitecture = ''
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.Core'
+        ModuleName = 'PureStoragePowerShellToolkit.DatabaseTools'
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.Reporting'
-        ModuleVersion = '3.0.0.3'
-    },
-    @{
-        ModuleName = 'PureStoragePowerShellToolkit.WindowsAdministration'
-        ModuleVersion = '3.0.0.3'
-    },
-    @{
-        ModuleName = 'PureStoragePowerShellToolkit.Exchange'
-        ModuleVersion = '3.0.0.3'
+        ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
+        Moduleversion = '3.0.0.3'
     }
 )
 
