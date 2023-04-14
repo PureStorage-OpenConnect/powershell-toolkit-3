@@ -92,7 +92,7 @@ FunctionsToExport = @(
     'Get-Pfa2QuickFixEngineering',
     'Get-Pfa2VolumeShadowCopy',
     'Get-Pfa2WindowsDiagnosticInfo',
-    'Get-Pfa2MPIODiskLBolicy',
+    'Get-Pfa2MPIODiskLBPolicy',
     'Set-Pfa2MPIODiskLBPolicy',
     'Set-Pfa2TlsVersions',
     'Set-Pfa2WindowsPowerScheme',

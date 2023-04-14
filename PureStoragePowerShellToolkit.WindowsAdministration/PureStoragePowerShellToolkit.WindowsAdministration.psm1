@@ -295,7 +295,7 @@ function Get-Pfa2HostBusAdapter() {
     }
 }
 
-function Get-Pfa2MPIODiskLBolicy() {
+function Get-Pfa2MPIODiskLBPolicy() {
     <#
     .SYNOPSIS
     Retrieves the current MPIO Load Balancing policy for Pure FlashArray disk(s).
@@ -308,23 +308,23 @@ function Get-Pfa2MPIODiskLBolicy() {
     .OUTPUTS
     mpclaim.exe output.
     .EXAMPLE
-    Get-Pfa2MPIODiskLBolicy
+    Get-Pfa2MPIODiskLBPolicy
 
     Returns the current MPIO Load Balancing Policy for all MPIO disks.
 
     .EXAMPLE
-    Get-Pfa2MPIODiskLBolicy -DiskId 1
+    Get-Pfa2MPIODiskLBPolicy -DiskId 1
 
     Returns the current MPIO LB policy for MPIO disk 1.
 
     .EXAMPLE
-    2, 3 | Get-Pfa2MPIODiskLBolicy
+    2, 3 | Get-Pfa2MPIODiskLBPolicy
 
     Returns the current MPIO LB policy for MPIO disks 2 and 3.
 
     .EXAMPLE
     $dataDisk = [pscustomobject]@{Caption = 'Prod Data'; DiskId = 2}
-    $dataDisk | Get-Pfa2MPIODiskLBolicy
+    $dataDisk | Get-Pfa2MPIODiskLBPolicy
 
     Returns the current MPIO LB policy for MPIO disk 2.
     #>
@@ -1757,7 +1757,7 @@ Export-ModuleMember -Function Get-Pfa2SerialNumbers
 Export-ModuleMember -Function Get-Pfa2QuickFixEngineering
 Export-ModuleMember -Function Get-Pfa2VolumeShadowCopy
 Export-ModuleMember -Function Get-Pfa2WindowsDiagnosticInfo
-Export-ModuleMember -Function Get-Pfa2MPIODiskLBolicy
+Export-ModuleMember -Function Get-Pfa2MPIODiskLBPolicy
 Export-ModuleMember -Function Set-Pfa2MPIODiskLBPolicy
 Export-ModuleMember -Function Set-Pfa2TlsVersions
 Export-ModuleMember -Function Set-Pfa2WindowsPowerScheme
