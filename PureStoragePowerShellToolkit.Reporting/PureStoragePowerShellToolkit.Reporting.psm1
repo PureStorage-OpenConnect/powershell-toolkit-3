@@ -250,7 +250,12 @@ function New-Pfa2ExcelReport {
                 Created, `
                 @{n = 'Volume Group'; e = { $_.VolumeGroup.Name } }, `
                 Destroyed, `
-                TimeRemaining
+                @{n = 'Time Remaining'; e = {
+                    if ($_.TimeRemaining) {
+                        $span = [TimeSpan]::FromMilliseconds($_.TimeRemaining)
+                        "{0:D2}h {1:D2}m" -f ($span.Days * 24 + $span.Hours), $span.Minutes
+                    }
+                } }
 
             $simple = @()
             $vvol = @()
