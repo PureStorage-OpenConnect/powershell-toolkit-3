@@ -39,6 +39,26 @@ function Convert-UnitOfSize {
     }
 }
 
+function Get-SizeLabel {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Size,
+        $Decimals = 2
+    )
+
+    begin {
+        $postfixes = @('B', 'KB', 'MB', 'GB', 'TB', 'PB')
+    }
+
+    process {
+        for ($i = 0; $Size -ge 1024 -and $i -lt $postfixes.Length; $i++) {
+            $Size = $Size / 1024
+        }
+        return '' + [System.Math]::Round($Size, $Decimals) + ' ' + $postfixes[$i]
+    }
+}
+
 function Write-Color {
     [CmdletBinding()]
     param(
@@ -111,6 +131,118 @@ function Write-Color {
 }
 
 #endregion Helper functions
+
+class ModuleEntity {
+    hidden [string] GetSizeLabel($size) {
+        return Get-SizeLabel -Size $size -Decimals 2
+    }
+}
+
+class ArrayEntity : ModuleEntity {
+    [string]$Array
+
+    ArrayEntity([string]$array) {
+        $this.Array = $array
+    }
+}
+
+class HostVolume : ArrayEntity {
+    [string]$HostName
+    [string]$VolumeName
+    [string]$SourceName
+    [datetime]$Created
+    [string]$SerialNumber
+    [long]$Provisioned
+
+    HostVolume([string]$array, 
+        [string]$hostName,
+        [string]$volumeName,
+        [string]$sourceName,
+        [datetime]$created,
+        [string]$serial,
+        [long]$provisioned) : base($array) {
+
+        $this.HostName     = $hostName
+        $this.VolumeName   = $volumeName
+        $this.SourceName   = $sourceName
+        $this.Created      = $created
+        $this.SerialNumber = $serial
+        $this.Provisioned  = $provisioned
+    }
+}
+
+class VolumeConnection : ArrayEntity {
+    [string]$HostName
+    [string]$VolumeName
+    [long]$Lun
+    [string[]]$Iqn
+    [string[]]$Wwn
+    [long]$Provisioned
+    [long]$Unique
+
+    VolumeConnection([string]$array, 
+        [string]$hostName,
+        [string]$volumeName,
+        [long]$lun,
+        [string[]]$iqn,
+        [string[]]$wwn,
+        [long]$provisioned,
+        [long]$unique) : base($array) {
+
+        $this.HostName    = $hostName
+        $this.VolumeName  = $volumeName
+        $this.Lun         = $lun
+        $this.Iqn         = $iqn
+        $this.Wwn         = $wwn
+        $this.Provisioned = $provisioned
+        $this.Unique      = $unique
+    }
+}
+
+class DisconnectedVolume : ArrayEntity {
+    [string]$VolumeName
+    [string]$SerialNumber
+    [long]$Provisioned
+    [long]$Unique
+    [float]$DataReduction
+
+    DisconnectedVolume([string]$array, 
+        [string]$volumeName,
+        [string]$serial,
+        [long]$provisioned,
+        [long]$unique,
+        [float]$reduction) : base($array) {
+
+        $this.VolumeName    = $volumeName
+        $this.SerialNumber  = $serial
+        $this.Provisioned   = $provisioned
+        $this.Unique        = $unique
+        $this.DataReduction = $reduction
+    }
+}
+
+class CapacityStats : ModuleEntity {
+    [int]$ArraysCount
+    [long]$Capacity
+    [long]$Unique
+    [double]$ReducedFrom
+    [double]$TotalProvisioned
+    [datetime]$CollectionDate
+
+    CapacityStats([int]$arraysCount,
+        [long]$capacity,
+        [long]$unique,
+        [double]$reducedFrom,
+        [double]$totalProvisioned) : base() {
+
+        $this.ArraysCount      = $arraysCount
+        $this.Capacity         = $capacity
+        $this.Unique           = $unique
+        $this.ReducedFrom      = $reducedFrom
+        $this.TotalProvisioned = $totalProvisioned
+        $this.CollectionDate   = Get-Date
+    }
+}
 
 function Get-Pfa2AllHostVolumeInfo() {
     <#
@@ -187,16 +319,15 @@ function Get-Pfa2AllHostVolumeInfo() {
         try {
             Get-Pfa2Connection -Array $flashArray -PipelineVariable c |
             ForEach-Object { Get-Pfa2Volume -Array $flashArray -Name $_.Volume.Name } |
-            ForEach-Object { [pscustomobject]@{
-                    Array      = $flashArray.ArrayName
-                    Host       = $c.Host.Name
-                    VolumeName = $_.Name
-                    Created    = $_.Created
-                    Source     = $_.Source.Name
-                    Serial     = $_.Serial
-                    Size       = $_.Space.TotalProvisioned
-                } } |
-            Sort-Object -Property 'Host'
+            ForEach-Object {
+                [HostVolume]::new($flashArray.ArrayName,
+                    $c.Host.Name,
+                    $_.Name,
+                    $_.Source.Name,
+                    $_.Created,
+                    $_.Serial,
+                    $_.Provisioned)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -400,17 +531,15 @@ function Get-Pfa2ConnectDetails() {
             Get-Pfa2Connection -Array $flashArray -Filter "volume.name!='pure-protocol-endpoint'" | ForEach-Object {
                 $purehost = $hosts[$_.Host.Name]
                 $volume = $volumes[$_.Volume.Name]
-                [pscustomobject]@{
-                    Array       = $flashArray.ArrayName
-                    HostName    = $purehost.Name
-                    VolumeName  = $volume.Name
-                    Lun         = $_.Lun
-                    IQNs        = $purehost.Iqns
-                    WWNs        = $purehost.Wwns
-                    Provisioned = $volume.Provisioned
-                    HostWritten = $volume.Provisioned * (1 - $volume.Space.ThinProvisioning)
-                }
-            } | Sort-Object HostName
+                [VolumeConnection]::new($flashArray.ArrayName,
+                    $purehost.Name,
+                    $volume.Name,
+                    $_.Lun,
+                    $purehost.Iqns,
+                    $purehost.Wwns,
+                    $volume.Provisioned,
+                    $volume.Space.Unique)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -497,11 +626,11 @@ function Get-Pfa2DisconnectedVolumes() {
             $connectedVolumes = @(Get-Pfa2Connection -Array $flashArray | Select-Object -Expand Volume | Select-Object -Expand Name -Unique)
             $disconnectedVolumes = @($allVolumes | Where-Object { $_ -notin $connectedVolumes })
 
-            $faTotal = Convert-UnitOfSize $faSpace.Space.TotalPhysical -To 1TB
-            $faCapacity = Convert-UnitOfSize $faSpace.Capacity -To 1TB
+            $faTotal = Get-SizeLabel $faSpace.Space.TotalPhysical
+            $faCapacity = Get-SizeLabel $faSpace.Capacity
 
             Write-Host ''
-            Write-Host "`t$Endpoint - $faTotal TB/$faCapacity TB ($(($faSpace.Space.TotalPhysical/$faSpace.capacity).ToString('P0')) Full)`n"
+            Write-Host "`t$Endpoint - $faTotal / $faCapacity ($(($faSpace.Space.TotalPhysical/$faSpace.Capacity).ToString('P2')) Full)`n"
             Write-Host '==================================================='
             Write-Host "`t`tDisconnected Volumes ($($disconnectedVolumes.Count) of $($allVolumes.Count))"
             Write-Host '==================================================='
@@ -511,24 +640,17 @@ function Get-Pfa2DisconnectedVolumes() {
                 foreach ($disconnectedVolume in $DisconnectedVolumes) {
                     if ($null -ne $disconnectedVolume) {
                         $getVol = Get-Pfa2Volume -Array $flashArray -Name $disconnectedVolume
-                        $reduction = $getVol.Space.DataReduction
-                        $reduction = [math]::Round($Reduction, 0)
-                        $volume = [pscustomobject] @{
-                            Array       = $flashArray.ArrayName
-                            Name        = $disconnectedVolume
-                            Serial      = $getVol.serial
-                            Consumed    = $getVol.Space.Unique
-                            Provisioned = $getVol.Space.TotalProvisioned
-                            Reduction   = "$reduction`:1"
-                        }
-                        $volume
+                        [DisconnectedVolume]::new($flashArray.ArrayName,
+                        $disconnectedVolume,
+                        $getVol.Serial,
+                        $getVol.Provisioned,
+                        $getVol.Space.Unique,
+                        $getVol.Space.DataReduction)
+
                         $potentialSpaceSavings = $potentialSpaceSavings + $getVol.Space.Unique
                     }
                 }
-                Write-Host "Potential space savings for $Endpoint is $(Convert-UnitOfSize $potentialSpaceSavings -To 1GB) GB."
-            }
-            else {
-                Write-Host 'No Disconnected Volumes found.'
+                Write-Host "Potential space savings for $Endpoint is $(Get-SizeLabel $potentialSpaceSavings)."
             }
         }
         finally {
@@ -930,8 +1052,8 @@ function Get-Pfa2QuickCapacityStats() {
                 $count ++;
                 $capacity += $s.Capacity
                 $volumes += $s.Unique
-                $beforereduction += $s.Unique * $s.DataReduction 
-                $provisioned += ($s.TotalPhysical - $s.System) / (1 - $s.ThinProvisioning) * $s.DataReduction 
+                $beforereduction += $s.Unique * $s.DataReduction
+                $provisioned += ($s.TotalPhysical - $s.System) / (1 - $s.ThinProvisioning) * $s.DataReduction
             }
             finally {
                 Disconnect-Pfa2Array -Array $flashArray
@@ -940,16 +1062,11 @@ function Get-Pfa2QuickCapacityStats() {
     }
 
     end {
-        $stats = [pscustomobject]@{
-            ArraysCount    = $count
-            Capacity       = $capacity
-            Written        = $volumes
-            ReducedFrom    = $beforereduction
-            Provisioned    = $provisioned
-            CollectionDate = Get-Date
-        }
-
-        $stats
+        [CapacityStats]::new($count,
+            $capacity,
+            $volumes,
+            $beforereduction,
+            $provisioned)
     }
 }
 
@@ -1094,7 +1211,7 @@ function Get-Pfa2Space() {
             Get-Pfa2ArraySpace -Array $flashArray -PipelineVariable a | 
             Select-Object -Expand Space |
             ForEach-Object { [pscustomobject]@{
-                    Name             = $a.Name
+                    Array            = $a.Name
                     PercentUsed      = [math]::Round(($_.TotalPhysical / $a.Capacity) * 100, 2)
                     CapacityUsed     = $_.TotalPhysical
                     CapacityFree     = ($a.Capacity - $_.TotalPhysical)

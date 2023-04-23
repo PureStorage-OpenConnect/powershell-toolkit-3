@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Types>
+  <Type>
+    <Name>HostVolume</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Size</Name>
+        <ReferencedMemberName>Provisioned</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
+  <Type>
+    <Name>VolumeConnection</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Size</Name>
+        <ReferencedMemberName>Provisioned</ReferencedMemberName>
+      </AliasProperty>
+      <AliasProperty>
+        <Name>Written</Name>
+        <ReferencedMemberName>Unique</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
+  <Type>
+    <Name>DisconnectedVolume</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Size</Name>
+        <ReferencedMemberName>Provisioned</ReferencedMemberName>
+      </AliasProperty>
+      <AliasProperty>
+        <Name>Consumed</Name>
+        <ReferencedMemberName>Unique</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
+</Types>
