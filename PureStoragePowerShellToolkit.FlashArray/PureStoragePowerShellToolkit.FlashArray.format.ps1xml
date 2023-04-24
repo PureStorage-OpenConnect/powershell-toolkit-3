@@ -18,7 +18,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Volume Name</Label>
-            <Width>20</Width>
+            <Width>16</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Source Name</Label>
@@ -26,7 +26,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Date Created</Label>
-            <Width>16</Width>
+            <Width>14</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Serial Number</Label>
@@ -34,7 +34,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Size</Label>
-            <Width>12</Width>
+            <Width>10</Width>
           </TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
@@ -84,7 +84,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Volume Name</Label>
-            <Width>20</Width>
+            <Width>16</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Lun</Label>
@@ -92,7 +92,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>IQN</Label>
-            <Width>18</Width>
+            <Width>16</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>WWN</Label>
@@ -100,11 +100,11 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Size</Label>
-            <Width>12</Width>
+            <Width>10</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Written</Label>
-            <Width>12</Width>
+            <Width>10</Width>
           </TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
@@ -154,7 +154,7 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Volume Name</Label>
-            <Width>40</Width>
+            <Width>38</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Serial Number</Label>
@@ -162,15 +162,15 @@
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Size</Label>
-            <Width>12</Width>
+            <Width>10</Width>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Consumed</Label>
-            <Width>12</Width>
+            <Width>10</Width>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>Reduction</Label>
-            <Width>16</Width>
+            <Label>Data Reduction</Label>
+            <Width>14</Width>
           </TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
@@ -260,6 +260,94 @@
               <TableColumnItem>
                 <Alignment>Right</Alignment>
                 <ScriptBlock>$_.GetSizeLabel($_.TotalProvisioned)</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>ArraySpace</Name>
+      <ViewSelectedBy>
+        <TypeName>ArraySpace</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Array</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Capacity</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Used</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Free</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Unique</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Snapshots</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Shared</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>System</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Data Reduction</Label>
+            <Width>14</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Array</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Capacity)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>"{0} ({1:P2})" -f $_.GetSizeLabel($_.TotalPhysical), $_.PercentUsed</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.CapacityFree)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Unique)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Snapshots)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Shared)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.System)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+              <Alignment>Right</Alignment>
+                <PropertyName>DataReduction</PropertyName>
+                <FormatString>{0:N1} to 1</FormatString>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>

@@ -206,7 +206,7 @@ class DisconnectedVolume : ArrayEntity {
     [long]$Unique
     [float]$DataReduction
 
-    DisconnectedVolume([string]$array, 
+    DisconnectedVolume([string]$array,
         [string]$volumeName,
         [string]$serial,
         [long]$provisioned,
@@ -241,6 +241,42 @@ class CapacityStats : ModuleEntity {
         $this.ReducedFrom      = $reducedFrom
         $this.TotalProvisioned = $totalProvisioned
         $this.CollectionDate   = Get-Date
+    }
+}
+
+class ArraySpace : ArrayEntity {
+    [long]$Capacity
+    [long]$CapacityFree
+    [double]$PercentUsed
+    [long]$TotalPhysical
+    [long]$Unique
+    [long]$Shared
+    [long]$Snapshots
+    [long]$System
+    [float]$DataReduction
+    [float]$ThinProvisioning
+
+    ArraySpace([string]$array,
+        [long]$capacity,
+        [long]$totalPhysical,
+        [long]$unique,
+        [long]$shared,
+        [long]$snapshots,
+        [long]$system,
+        [float]$dataReduction,
+        [float]$thinProvisioning) : base($array) {
+
+        $this.Capacity         = $capacity
+        $this.TotalPhysical    = $totalPhysical
+        $this.Unique           = $unique
+        $this.Shared           = $shared
+        $this.Snapshots        = $snapshots
+        $this.System           = $system
+        $this.DataReduction    = $dataReduction
+        $this.ThinProvisioning = $thinProvisioning
+
+        $this.CapacityFree = $this.Capacity - $this.TotalPhysical
+        $this.PercentUsed  = $this.TotalPhysical / $this.Capacity
     }
 }
 
@@ -650,6 +686,7 @@ function Get-Pfa2DisconnectedVolumes() {
                         $potentialSpaceSavings = $potentialSpaceSavings + $getVol.Space.Unique
                     }
                 }
+                Write-Host ''
                 Write-Host "Potential space savings for $Endpoint is $(Get-SizeLabel $potentialSpaceSavings)."
             }
         }
@@ -1210,19 +1247,17 @@ function Get-Pfa2Space() {
         try {
             Get-Pfa2ArraySpace -Array $flashArray -PipelineVariable a | 
             Select-Object -Expand Space |
-            ForEach-Object { [pscustomobject]@{
-                    Array            = $a.Name
-                    PercentUsed      = [math]::Round(($_.TotalPhysical / $a.Capacity) * 100, 2)
-                    CapacityUsed     = $_.TotalPhysical
-                    CapacityFree     = ($a.Capacity - $_.TotalPhysical)
-                    VolumeSpace      = $_.Unique
-                    SharedSpace      = $_.Shared
-                    SnapshotSpace    = $_.Snapshots
-                    SystemSpace      = $_.System
-                    TotalStorage     = $a.Capacity
-                    DataReduction    = [math]::Round($_.DataReduction, 2)
-                    ThinProvisioning = [math]::Round($_.ThinProvisioning * 10, 2)
-                } }
+            ForEach-Object {
+                [ArraySpace]::new($flashArray.ArrayName,
+                    $a.Capacity,
+                    $_.TotalPhysical,
+                    $_.Unique,
+                    $_.Shared,
+                    $_.Snapshots,
+                    $_.System,
+                    $_.DataReduction,
+                    $_.ThinProvisioning)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
