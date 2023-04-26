@@ -35,4 +35,22 @@
       </AliasProperty>
     </Members>
   </Type>
+  <Type>
+    <Name>StaleSnapshot</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Size</Name>
+        <ReferencedMemberName>TotalPhysical</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
+  <Type>
+    <Name>VolumeGrowthStats</Name>
+    <Members>
+      <AliasProperty>
+        <Name>Size</Name>
+        <ReferencedMemberName>Provisioned</ReferencedMemberName>
+      </AliasProperty>
+    </Members>
+  </Type>
 </Types>

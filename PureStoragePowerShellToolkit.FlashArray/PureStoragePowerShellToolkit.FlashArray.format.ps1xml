@@ -60,7 +60,7 @@
               </TableColumnItem>
               <TableColumnItem>
                 <Alignment>Right</Alignment>
-                <ScriptBlock>$_.GetSizeLabel($_.Size)</ScriptBlock>
+                <ScriptBlock>$_.GetSizeLabel($_.Provisioned)</ScriptBlock>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -345,9 +345,205 @@
                 <ScriptBlock>$_.GetSizeLabel($_.System)</ScriptBlock>
               </TableColumnItem>
               <TableColumnItem>
-              <Alignment>Right</Alignment>
+                <Alignment>Right</Alignment>
                 <PropertyName>DataReduction</PropertyName>
                 <FormatString>{0:N1} to 1</FormatString>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>StaleSnapshot</Name>
+      <ViewSelectedBy>
+        <TypeName>StaleSnapshot</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Array</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Snapshot Name</Label>
+            <Width>38</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Destroyed</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Age</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Size</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Array</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SnapshotName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>if ($_.Destroyed) {'Yes'} else {'No'}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>"{0}d {1:D2}h" -f $_.Age.Days, $_.Age.Hours</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.TotalPhysical)</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>VolumeGrowthStats</Name>
+      <ViewSelectedBy>
+        <TypeName>VolumeGrowthStats</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Array</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Volume Name</Label>
+            <Width>38</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Size</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Unique</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Growth</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Growth (%)</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Array</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>VolumeName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Provisioned)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Unique)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <ScriptBlock>$_.GetSizeLabel($_.Growth)</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <Alignment>Right</Alignment>
+                <PropertyName>GrowthPercent</PropertyName>
+                <FormatString>{0:P2}</FormatString>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+      <View>
+      <Name>PgroupConfig</Name>
+      <ViewSelectedBy>
+        <TypeName>PgroupConfig</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Array</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Members</Label>
+            <Width>16</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Replication Enabled</Label>
+            <Width>12</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Frequency</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Snapshots Retained</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Retention Time</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Extra Snapshots Retained</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Extra Retention Time</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Array</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>PgroupName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.Members -join ', '</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {'Yes'} else {'No'}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {"{0} min." -f ($_.Frequency/1000/60)}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {"{0}" -f ($_.AllForSec/60)/($_.Frequency/1000/60)}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {"{0} min." -f ($_.AllForSec/60)}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {$_.PerDay}</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.ReplicationEnabled) {"{0} days" -f $_.Days}</ScriptBlock>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
