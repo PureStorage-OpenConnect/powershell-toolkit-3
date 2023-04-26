@@ -39,26 +39,6 @@ function Convert-UnitOfSize {
     }
 }
 
-function Get-SizeLabel {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        $Size,
-        $Decimals = 2
-    )
-
-    begin {
-        $postfixes = @('B', 'KB', 'MB', 'GB', 'TB', 'PB')
-    }
-
-    process {
-        for ($i = 0; $Size -ge 1024 -and $i -lt $postfixes.Length; $i++) {
-            $Size = $Size / 1024
-        }
-        return '' + [System.Math]::Round($Size, $Decimals) + ' ' + $postfixes[$i]
-    }
-}
-
 function Write-Color {
     [CmdletBinding()]
     param(
@@ -1676,10 +1656,10 @@ function Get-Pfa2VolumeGrowth() {
             $result = $volThatBreachGrowthThreshold | ForEach-Object {
                 [pscustomobject]@{
                     Array         = $_.Array
-                    'Volume Name' = $_.VolumeName
-                    Size          = Get-SizeLabel $_.Provisioned
-                    Unique        = Get-SizeLabel $_.Unique
-                    Growth        = Get-SizeLabel $_.Growth
+                    Name          = $_.VolumeName
+                    'Size (GB)'   = Convert-UnitOfSize $_.Provisioned -To 1GB
+                    'Unique (GB)' = Convert-UnitOfSize $_.Unique -To 1GB
+                    'Growth (GB)' = Convert-UnitOfSize $_.Growth -To 1GB
                     'Growth (%)'  = '{0:P2}' -f $_.GrowthPercent
                 }
             }
@@ -1771,6 +1751,26 @@ function Clear-Pfa2Credential {
     [OutputType([void])]
 
     $script:Creds = $null
+}
+
+function Get-SizeLabel {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Size,
+        $Decimals = 2
+    )
+
+    begin {
+        $postfixes = @('B', 'KB', 'MB', 'GB', 'TB', 'PB')
+    }
+
+    process {
+        for ($i = 0; $Size -ge 1024 -and $i -lt $postfixes.Length; $i++) {
+            $Size = $Size / 1024
+        }
+        return '' + [System.Math]::Round($Size, $Decimals) + ' ' + $postfixes[$i]
+    }
 }
 
 function New-Pfa2CapacityReport() {
@@ -1874,8 +1874,8 @@ function New-Pfa2CapacityReport() {
             $datardx = "{0:N2}" -f $volume.Space.DataReduction
             $dataTP = "{0:N3}" -f $volume.Space.ThinProvisioning
             $WrittenSpace = "{0:N2}" -f (((1 - $volume.Space.ThinProvisioning) * $volume.Space.TotalPhysical) / 1GB)
-            if ($volume.Space.shared_space) {
-                $dataSS = "{0:N2}" -f $volume.Space.shared_space
+            if ($volume.Space.shared) {
+                $dataSS = "{0:N2}" -f $volume.Space.shared
             }
             else {
                 $dataSS = "None"
