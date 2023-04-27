@@ -99,8 +99,8 @@ FunctionsToExport = @(
     'New-Pfa2VolumeShadowCopy',
     'Enable-Pfa2SecureChannelProtocol',
     'Disable-Pfa2SecureChannelProtocol',
-    'Register-Pfa2HostVolumes',
-    'Unregister-Pfa2HostVolumes',
+    'Mount-Pfa2HostVolumes',
+    'Dismount-Pfa2HostVolumes',
     'Update-Pfa2DriveInformation',
     'Test-Pfa2WindowsBestPractices'
 )
