@@ -21,7 +21,7 @@
 
 #Requires -Version 5
 #Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.0.3' }
-#Requires -Modules @{ ModuleName='dbatools'; ModuleVersion='1.1.146' }
+#Requires -Modules @{ ModuleName='dbatools'; ModuleVersion='1.0.173' }
 
 #region Helper functions
 
