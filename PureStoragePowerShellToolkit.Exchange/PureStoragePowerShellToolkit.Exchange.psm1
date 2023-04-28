@@ -35,7 +35,8 @@ $script:supportedBusTypes = @('iSCSI', 'Fibre Channel')
 function Convert-UnitOfSize {
     [CmdletBinding()]
     param (
-        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [AllowNull()]
         $Value,
         $To = 1GB,
         $From = 1,
