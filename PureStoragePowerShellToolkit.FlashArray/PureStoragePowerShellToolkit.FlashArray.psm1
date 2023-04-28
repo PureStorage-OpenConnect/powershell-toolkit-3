@@ -112,6 +112,232 @@ function Write-Color {
 
 #endregion Helper functions
 
+class ModuleEntity {
+    hidden [string] GetSizeLabel($size) {
+        return Get-SizeLabel -Size $size -Decimals 2
+    }
+}
+
+class ArrayEntity : ModuleEntity {
+    [string]$Array
+
+    ArrayEntity([string]$array) {
+        $this.Array = $array
+    }
+}
+
+class HostVolume : ArrayEntity {
+    [string]$HostName
+    [string]$VolumeName
+    [string]$SourceName
+    [datetime]$Created
+    [string]$SerialNumber
+    [long]$Provisioned
+
+    HostVolume([string]$array, 
+        [string]$hostName,
+        [string]$volumeName,
+        [string]$sourceName,
+        [datetime]$created,
+        [string]$serial,
+        [long]$provisioned) : base($array) {
+
+        $this.HostName     = $hostName
+        $this.VolumeName   = $volumeName
+        $this.SourceName   = $sourceName
+        $this.Created      = $created
+        $this.SerialNumber = $serial
+        $this.Provisioned  = $provisioned
+    }
+}
+
+class VolumeConnection : ArrayEntity {
+    [string]$HostName
+    [string]$VolumeName
+    [long]$Lun
+    [string[]]$Iqn
+    [string[]]$Wwn
+    [long]$Provisioned
+    [long]$Unique
+
+    VolumeConnection([string]$array, 
+        [string]$hostName,
+        [string]$volumeName,
+        [long]$lun,
+        [string[]]$iqn,
+        [string[]]$wwn,
+        [long]$provisioned,
+        [long]$unique) : base($array) {
+
+        $this.HostName    = $hostName
+        $this.VolumeName  = $volumeName
+        $this.Lun         = $lun
+        $this.Iqn         = $iqn
+        $this.Wwn         = $wwn
+        $this.Provisioned = $provisioned
+        $this.Unique      = $unique
+    }
+}
+
+class DisconnectedVolume : ArrayEntity {
+    [string]$VolumeName
+    [string]$SerialNumber
+    [long]$Provisioned
+    [long]$Unique
+    [float]$DataReduction
+
+    DisconnectedVolume([string]$array,
+        [string]$volumeName,
+        [string]$serial,
+        [long]$provisioned,
+        [long]$unique,
+        [float]$reduction) : base($array) {
+
+        $this.VolumeName    = $volumeName
+        $this.SerialNumber  = $serial
+        $this.Provisioned   = $provisioned
+        $this.Unique        = $unique
+        $this.DataReduction = $reduction
+    }
+}
+
+class CapacityStats : ModuleEntity {
+    [int]$ArraysCount
+    [long]$Capacity
+    [long]$Unique
+    [double]$ReducedFrom
+    [double]$TotalProvisioned
+    [datetime]$CollectionDate
+
+    CapacityStats([int]$arraysCount,
+        [long]$capacity,
+        [long]$unique,
+        [double]$reducedFrom,
+        [double]$totalProvisioned) : base() {
+
+        $this.ArraysCount      = $arraysCount
+        $this.Capacity         = $capacity
+        $this.Unique           = $unique
+        $this.ReducedFrom      = $reducedFrom
+        $this.TotalProvisioned = $totalProvisioned
+        $this.CollectionDate   = Get-Date
+    }
+}
+
+class ArraySpace : ArrayEntity {
+    [long]$Capacity
+    [long]$CapacityFree
+    [double]$PercentUsed
+    [long]$TotalPhysical
+    [long]$Unique
+    [long]$Shared
+    [long]$Snapshots
+    [long]$System
+    [float]$DataReduction
+    [float]$ThinProvisioning
+
+    ArraySpace([string]$array,
+        [long]$capacity,
+        [long]$totalPhysical,
+        [long]$unique,
+        [long]$shared,
+        [long]$snapshots,
+        [long]$system,
+        [float]$dataReduction,
+        [float]$thinProvisioning) : base($array) {
+
+        $this.Capacity         = $capacity
+        $this.TotalPhysical    = $totalPhysical
+        $this.Unique           = $unique
+        $this.Shared           = $shared
+        $this.Snapshots        = $snapshots
+        $this.System           = $system
+        $this.DataReduction    = $dataReduction
+        $this.ThinProvisioning = $thinProvisioning
+
+        $this.CapacityFree = $this.Capacity - $this.TotalPhysical
+        $this.PercentUsed  = $this.TotalPhysical / $this.Capacity
+    }
+}
+
+class StaleSnapshot : ArrayEntity {
+    [string]$SnapshotName
+    [long]$TotalPhysical
+    [bool]$Destroyed
+    [timespan]$Age
+
+    StaleSnapshot([string]$array,
+        [string]$snapshotName,
+        [long]$totalPhysical,
+        [bool]$destroyed,
+        [timespan]$age) : base($array) {
+
+        $this.SnapshotName  = $snapshotName
+        $this.TotalPhysical = $totalPhysical
+        $this.Destroyed     = $destroyed
+        $this.Age           = $age
+    }
+}
+
+class VolumeGrowthStats : ArrayEntity {
+    [string]$VolumeName
+    [long]$Provisioned
+    [long]$Unique
+    [long]$Growth
+    [double]$GrowthPercent
+
+    VolumeGrowthStats([string]$array, 
+        [string]$volumeName,
+        [long]$provisioned,
+        [long]$unique,
+        [long]$growth,
+        [double]$growthPercent) : base($array) {
+
+        $this.VolumeName    = $volumeName
+        $this.Provisioned   = $provisioned
+        $this.Unique        = $unique
+        $this.Growth        = $growth
+        $this.GrowthPercent = $growthPercent
+    }
+}
+
+class PgroupConfig : ArrayEntity {
+    [string]$PgroupName
+    [string[]]$HostGroups
+    [string[]]$Hosts
+    [string[]]$Volumes
+    [string[]]$Members
+    [bool]$ReplicationEnabled
+    [long]$Frequency
+    [int]$AllForSec
+    [int]$Days
+    [int]$PerDay
+
+    PgroupConfig([string]$array,
+        [string]$pgroupName,
+        [string[]]$hostGroups,
+        [string[]]$hosts,
+        [string[]]$volumes,
+        [bool]$replicationEnabled,
+        [long]$frequency,
+        [int]$allForSec,
+        [int]$days,
+        [int]$perDay) : base($array) {
+
+            $this.PgroupName         = $pgroupName
+            $this.HostGroups         = $hostGroups
+            $this.Hosts              = $hosts
+            $this.Volumes            = $volumes
+            $this.ReplicationEnabled = $replicationEnabled
+            $this.Frequency          = $frequency
+            $this.AllForSec          = $allForSec
+            $this.Days               = $days
+            $this.PerDay             = $perDay
+
+            $this.Members = (@($this.HostGroups, $this.Hosts, $this.Volumes) -ne $null)[0]
+    }
+}
+
 function Get-Pfa2AllHostVolumeInfo() {
     <#
     .SYNOPSIS
@@ -187,17 +413,15 @@ function Get-Pfa2AllHostVolumeInfo() {
         try {
             Get-Pfa2Connection -Array $flashArray -PipelineVariable c |
             ForEach-Object { Get-Pfa2Volume -Array $flashArray -Name $_.Volume.Name } |
-            ForEach-Object { [pscustomobject]@{
-                    Array         = $flashArray.ArrayName
-                    Host          = $c.Host.Name
-                    'Volume Name' = $_.Name
-                    Created       = $_.Created
-                    Source        = $_.Source.Name
-                    Serial        = $_.Serial
-                    'Size (GB)'   = Convert-UnitOfSize $_.Space.TotalProvisioned -To 1GB
-                } } |
-            Sort-Object -Property 'Host' |
-            Format-Table -AutoSize
+            ForEach-Object {
+                [HostVolume]::new($flashArray.ArrayName,
+                    $c.Host.Name,
+                    $_.Name,
+                    $_.Source.Name,
+                    $_.Created,
+                    $_.Serial,
+                    $_.Provisioned)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -401,17 +625,15 @@ function Get-Pfa2ConnectDetails() {
             Get-Pfa2Connection -Array $flashArray -Filter "volume.name!='pure-protocol-endpoint'" | ForEach-Object {
                 $purehost = $hosts[$_.Host.Name]
                 $volume = $volumes[$_.Volume.Name]
-                [pscustomobject]@{
-                    Array               = $flashArray.ArrayName
-                    'Host Name'         = $purehost.Name
-                    'Volume Name'       = $volume.Name
-                    Lun                 = $_.Lun
-                    'IQNs'              = $purehost.Iqns
-                    'WWNs'              = $purehost.Wwns
-                    'Provisioned (GB)'  = Convert-UnitOfSize $volume.Provisioned -To 1GB
-                    'Host Written (GB)' = Convert-UnitOfSize ($volume.Provisioned * (1 - $volume.Space.ThinProvisioning)) -To 1GB
-                }
-            } | Sort-Object 'Host Name' | Format-Table -AutoSize
+                [VolumeConnection]::new($flashArray.ArrayName,
+                    $purehost.Name,
+                    $volume.Name,
+                    $_.Lun,
+                    $purehost.Iqns,
+                    $purehost.Wwns,
+                    $volume.Provisioned,
+                    $volume.Space.Unique)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -498,11 +720,11 @@ function Get-Pfa2DisconnectedVolumes() {
             $connectedVolumes = @(Get-Pfa2Connection -Array $flashArray | Select-Object -Expand Volume | Select-Object -Expand Name -Unique)
             $disconnectedVolumes = @($allVolumes | Where-Object { $_ -notin $connectedVolumes })
 
-            $faTotal = Convert-UnitOfSize $faSpace.Space.TotalPhysical -To 1TB
-            $faCapacity = Convert-UnitOfSize $faSpace.Capacity -To 1TB
+            $faTotal = Get-SizeLabel $faSpace.Space.TotalPhysical
+            $faCapacity = Get-SizeLabel $faSpace.Capacity
 
             Write-Host ''
-            Write-Host "`t$Endpoint - $faTotal TB/$faCapacity TB ($(($faSpace.Space.TotalPhysical/$faSpace.capacity).ToString('P0')) Full)`n"
+            Write-Host "`t$Endpoint - $faTotal / $faCapacity ($(($faSpace.Space.TotalPhysical/$faSpace.Capacity).ToString('P2')) Full)`n"
             Write-Host '==================================================='
             Write-Host "`t`tDisconnected Volumes ($($disconnectedVolumes.Count) of $($allVolumes.Count))"
             Write-Host '==================================================='
@@ -512,18 +734,18 @@ function Get-Pfa2DisconnectedVolumes() {
                 foreach ($disconnectedVolume in $DisconnectedVolumes) {
                     if ($null -ne $disconnectedVolume) {
                         $getVol = Get-Pfa2Volume -Array $flashArray -Name $disconnectedVolume
-                        $space = Convert-UnitOfSize $getVol.Space.Unique -To 1GB
-                        $total = Convert-UnitOfSize $getVol.Space.TotalProvisioned -To 1TB
-                        $reduction = $getVol.Space.DataReduction
-                        $reduction = [math]::Round($Reduction, 0)
-                        Write-Host "$disconnectedVolume`n`t$($getVol.serial)`n`t$space GB Consumed`n`t$total TB Provisioned`n`t$reduction`:1 Reduction`n"
-                        $potentialSpaceSavings = $PotentialSpaceSavings + $space
+                        [DisconnectedVolume]::new($flashArray.ArrayName,
+                        $disconnectedVolume,
+                        $getVol.Serial,
+                        $getVol.Provisioned,
+                        $getVol.Space.Unique,
+                        $getVol.Space.DataReduction)
+
+                        $potentialSpaceSavings = $potentialSpaceSavings + $getVol.Space.Unique
                     }
                 }
-                Write-Host "Potential space savings for $($Endpoint) is $potentialSpaceSavings GB."
-            }
-            else {
-                Write-Host 'No Disconnected Volumes found.'
+                Write-Host ''
+                Write-Host "Potential space savings for $Endpoint is $(Get-SizeLabel $potentialSpaceSavings)."
             }
         }
         finally {
@@ -659,12 +881,12 @@ Function Get-Pfa2Hierarchy() {
                                 }
 
                                 #Space consumed computation for each volume
-                                $SpaceConsumed += Convert-UnitOfSize $Snapshot.Space.TotalPhysical -To 1GB
+                                $SpaceConsumed += $Snapshot.Space.TotalPhysical
                             }
 
                             #Display space consumed if snapshot count exceeds threshold
                             If ($Snapshots.Count -gt 1) {
-                                Write-Host  "    There are $($Snapshots.Count) snapshots associated with this volume consuming a total of $SpaceConsumed GB on the array."
+                                Write-Host  "    There are $($Snapshots.Count) snapshots associated with this volume consuming a total of $(Get-SizeLabel $SpaceConsumed) on the array."
                             }
                         }
                     }
@@ -700,12 +922,12 @@ Function Get-Pfa2Hierarchy() {
                         }
 
                         #Space consumed computation for each volume
-                        $SpaceConsumed += Convert-UnitOfSize $Snapshot.Space.TotalPhysical -To 1GB
+                        $SpaceConsumed += $Snapshot.Space.TotalPhysical
                     }
 
                     #Display space consumed if snapshot count threshold is exceeded
                     If ($Snapshots.Count -gt 1) {
-                        Write-Host  "  There are $($Snapshots.Count) snapshots associated with this volume consuming a total of $SpaceConsumed GB on the array."
+                        Write-Host  "  There are $($Snapshots.Count) snapshots associated with this volume consuming a total of $(Get-SizeLabel $SpaceConsumed) on the array."
                     }
                 }
             }
@@ -801,29 +1023,16 @@ function Get-Pfa2PgroupsConfig() {
             Get-Pfa2ProtectionGroupHostGroup -Array $flashArray | ForEach-Object { $groupHostGroups[$_.Group.Name] += @($_.Member.Name) }
 
             foreach ($protectionGroup in $ProtectionGroups) {
-                if ($protectionGroup.ReplicationSchedule.Enabled -eq 'True') {
-                    Write-Host '========================================================================================'
-                    Write-Host "`t$Endpoint - $($protectionGroup.name)" -ForegroundColor Green
-                    Write-Host '========================================================================================'
-                    Write-Host "Host Groups: $($groupHostGroups[$protectionGroup.name])"
-                    Write-Host "Hosts: $($groupHosts[$protectionGroup.name])"
-                    Write-Host "Volumes: $($groupVolumes[$protectionGroup.name])"
-                    Write-Host ''
-                    Write-Host "A snapshot is taken and replicated every $($protectionGroup.ReplicationSchedule.Frequency/1000/60) minutes."
-                    Write-Host "$(($protectionGroup.TargetRetention.AllForSec/60)/($ProtectionGroup.ReplicationSchedule.Frequency/1000/60)) snapshot(s) are kept on the target for $($ProtectionGroup.TargetRetention.AllForSec/60) minutes."
-                    Write-Host "$($protectionGroup.TargetRetention.PerDay) additional snapshot(s) are kept for $($ProtectionGroup.TargetRetention.Days) more days."
-                }
-                else {
-                    Write-Host '=========================================================================================='
-                    Write-Host "`t$Endpoint - $($protectionGroup.name)" -ForegroundColor Yellow
-                    Write-Host '=========================================================================================='
-                    Write-Host "Host Groups: $($groupHostGroups[$protectionGroup.name])"
-                    Write-Host "Hosts: $($groupHosts[$protectionGroup.name])"
-                    Write-Host "Volumes: $($groupVolumes[$protectionGroup.name])"
-                    Write-Host ''
-                    Write-Host "$($protectionGroup.name) is disabled." -ForegroundColor Yellow
-                    Write-Host ''
-                }
+                [PgroupConfig]::new($flashArray.ArrayName,
+                    $protectionGroup.Name,
+                    $groupHostGroups[$protectionGroup.Name],
+                    $groupHosts[$protectionGroup.Name],
+                    $groupVolumes[$protectionGroup.Name],
+                    $protectionGroup.ReplicationSchedule.Enabled,
+                    $protectionGroup.ReplicationSchedule.Frequency,
+                    $protectionGroup.TargetRetention.AllForSec,
+                    $ProtectionGroup.TargetRetention.Days,
+                    $protectionGroup.TargetRetention.PerDay)
             }
         }
         finally {
@@ -925,8 +1134,8 @@ function Get-Pfa2QuickCapacityStats() {
                 $count ++;
                 $capacity += $s.Capacity
                 $volumes += $s.Unique
-                $beforereduction += $s.Unique * $s.DataReduction 
-                $provisioned += ($s.TotalPhysical - $s.System) / (1 - $s.ThinProvisioning) * $s.DataReduction 
+                $beforereduction += $s.Unique * $s.DataReduction
+                $provisioned += ($s.TotalPhysical - $s.System) / (1 - $s.ThinProvisioning) * $s.DataReduction
             }
             finally {
                 Disconnect-Pfa2Array -Array $flashArray
@@ -935,21 +1144,11 @@ function Get-Pfa2QuickCapacityStats() {
     }
 
     end {
-        $stats = [pscustomobject]@{
-            ArraysCount = $count
-            Capacity    = Convert-UnitOfSize $capacity -To 1TB
-            Volumes     = Convert-UnitOfSize $volumes -To 1TB
-            ReducedFrom = Convert-UnitOfSize $beforereduction -To 1TB
-            Provisioned = Convert-UnitOfSize $provisioned -To 1TB
-            Date        = Get-Date
-        }
-
-        $info = 
-        "On $($stats.ArraysCount) Pure FlashArrays, there is $($stats.Capacity) TB of capacity; " +
-        "$($stats.Volumes) TB written, reduced from $($stats.ReducedFrom) TB. Total provisioned: " +
-        "$($stats.Provisioned) TB. Data collected on $(Get-Date)"
-
-        $info | Write-Host
+        [CapacityStats]::new($count,
+            $capacity,
+            $volumes,
+            $beforereduction,
+            $provisioned)
     }
 }
 
@@ -1093,20 +1292,17 @@ function Get-Pfa2Space() {
         try {
             Get-Pfa2ArraySpace -Array $flashArray -PipelineVariable a | 
             Select-Object -Expand Space |
-            ForEach-Object { [pscustomobject]@{
-                    Name                  = $a.Name
-                    'Percent Used'        = ($_.TotalPhysical / $a.Capacity).ToString('P')
-                    'Capacity Used (TB)'  = Convert-UnitOfSize $_.TotalPhysical -To 1TB
-                    'Capacity Free (TB)'  = Convert-UnitOfSize ($a.Capacity - $_.TotalPhysical) -To 1TB
-                    'Volume Space (TB)'   = Convert-UnitOfSize $_.Unique -To 1TB
-                    'Shared Space (TB)'   = Convert-UnitOfSize $_.Shared -To 1TB
-                    'Snapshot Space (TB)' = Convert-UnitOfSize $_.Snapshots -To 1TB
-                    'System Space (TB)'   = Convert-UnitOfSize $_.System -To 1TB
-                    'Total Storage (TB)'  = Convert-UnitOfSize $a.Capacity -To 1TB
-                    'Data Reduction'      = [math]::Round($_.DataReduction, 2)
-                    'Thin Provisioning'   = [math]::Round($_.ThinProvisioning * 10, 2) 
-                } } |
-            Format-Table -AutoSize
+            ForEach-Object {
+                [ArraySpace]::new($flashArray.ArrayName,
+                    $a.Capacity,
+                    $_.TotalPhysical,
+                    $_.Unique,
+                    $_.Shared,
+                    $_.Snapshots,
+                    $_.System,
+                    $_.DataReduction,
+                    $_.ThinProvisioning)
+            }
         }
         finally {
             Disconnect-Pfa2Array -Array $flashArray
@@ -1215,7 +1411,7 @@ function Get-Pfa2StaleSnapshots() {
         # Establish variables, Pure time format, and gather current time.
         $currentTime = Get-Date
         [int]$snapNumber = 0
-        [decimal]$spaceConsumed = 0
+        [long]$spaceConsumed = 0
     }
 
     process {
@@ -1233,38 +1429,34 @@ function Get-Pfa2StaleSnapshots() {
         }
 
         try {
-            Write-Host ''
-            Write-Host '========================================================================='
-            Write-Host "`t`t$Endpoint"
-            Write-Host '========================================================================='
-
             #Get all snapshots and compute the age of them.
             $snapshots = Get-Pfa2VolumeSnapshot -Array $flashArray
             foreach ($snapshot in $snapshots) {
-                $snapAge = (New-TimeSpan -Start $snapshot.created -End $currentTime).TotalDays
+                $snapAge = New-TimeSpan -Start $snapshot.created -End $currentTime
 
                 #Find snaps older than given threshold and output with formatted data.
-                if ($snapAge -gt $SnapAgeThreshold) {
-                    $snapSize = Convert-UnitOfSize $snapshot.Space.TotalPhysical -To 1GB
-                    $spaceConsumed += $snapSize
+                if ($snapAge.TotalDays -gt $SnapAgeThreshold) {
+                    $spaceConsumed += $snapshot.Space.TotalPhysical
                     $snapNumber++
 
                     #Delete snapshots
                     if ($Delete) {
+                        $snapSize = Get-SizeLabel $snapshot.Space.TotalPhysical
                         if (-not $snapshot.Destroyed) {
-                            Write-Host "Deleting $($snapshot.name) - $snapSize GB."
+                            Write-Host "Deleting $($snapshot.name) - $snapSize."
                             Remove-Pfa2VolumeSnapshot -Array $flashArray -Name $snapshot.name
                         }
                         elseif ($Eradicate) {
-                            Write-Host "Eradicating $($snapshot.name) - $snapSize GB."
+                            Write-Host "Eradicating $($snapshot.name) - $snapSize."
                             Remove-Pfa2VolumeSnapshot -Array $flashArray -Name $snapshot.name -Eradicate
                         }
                     }
                     else {
-                        Write-Host $snapshot.name
-                        Write-Host "`tSize: $snapSize GB"
-                        Write-Host "`tDestroyed: $(if ($snapshot.Destroyed) {'Yes'} else {'No'})"
-                        Write-Host ("`tAge: {0:N2} days" -f $snapAge)
+                        [StaleSnapshot]::new($flashArray.ArrayName,
+                            $snapshot.Name,
+                            $snapshot.Space.TotalPhysical,
+                            $snapshot.Destroyed,
+                            $snapAge)
                     }
                 }
             }
@@ -1276,7 +1468,8 @@ function Get-Pfa2StaleSnapshots() {
 
     end {
         #Display final message for array results.
-        Write-Host "There are $snapNumber snapshot(s) older than $SnapAgeThreshold days consuming a total of $spaceConsumed GB on the array."
+        Write-Host ''
+        Write-Host "There are $snapNumber snapshot(s) older than $SnapAgeThreshold days consuming a total of $(Get-SizeLabel $spaceConsumed)."
     }
 }
 
@@ -1392,8 +1585,8 @@ function Get-Pfa2VolumeGrowth() {
 
         $params_message = "Ignore volumes " +
         "1) created in the last $MinimumVolumeAgeInDays days, " +
-        "2) smaller than $(Convert-UnitOfSize $DoNotReportVolSmallerThan -To 1GB) GB, and " +
-        "3) have growth of less than $(Convert-UnitOfSize $DoNotReportGrowthOfLessThan -To 1GB) GB " +
+        "2) smaller than $(Get-SizeLabel $DoNotReportVolSmallerThan), and " +
+        "3) have growth of less than $(Get-SizeLabel $DoNotReportGrowthOfLessThan) " +
         "or $GrowthPercentThreshold% of thier size starting from $StartTime."
 
         $all_arrays = @()
@@ -1434,17 +1627,15 @@ function Get-Pfa2VolumeGrowth() {
                         $last = ($volumeSpaceMetrics | Select-Object -Last 1).Space.Unique
                         $first = ($volumeSpaceMetrics | Select-Object -First 1).Space.Unique
                         $growth = $last - $first
-                        $growthPercentage = if ($first -ne 0) { $growth / $first } else { $growth / 1 }
-                        [pscustomobject]@{
-                            ArrayName        = $array
-                            Name             = $_.Name
-                            TotalProvisioned = $_.Space.TotalProvisioned
-                            Unique           = $_.Space.Unique
-                            Growth           = $growth
-                            GrowthPercentage = $growthPercentage * 100
-                        }
+                        $growthPercent = if ($first -ne 0) { $growth / $first } else { $growth / 1 }
+                        [VolumeGrowthStats]::new($flashArray.ArrayName,
+                            $_.Name,
+                            $_.Provisioned,
+                            $_.Space.Unique,
+                            $growth,
+                            $growthPercent)
                     } |
-                    Where-Object { $_.GrowthPercentage -gt $GrowthPercentThreshold -and $_.Growth -gt $DoNotReportGrowthOfLessThan }
+                    Where-Object { ($_.GrowthPercent * 100) -gt $GrowthPercentThreshold -and $_.Growth -gt $DoNotReportGrowthOfLessThan }
                 }
                 finally {
                     Disconnect-Pfa2Array -Array $flashArray
@@ -1464,17 +1655,17 @@ function Get-Pfa2VolumeGrowth() {
         if ($volThatBreachGrowthThreshold) {
             $result = $volThatBreachGrowthThreshold | ForEach-Object {
                 [pscustomobject]@{
-                    Array         = $_.ArrayName
-                    Name          = $_.Name
-                    'Size (GB)'   = Convert-UnitOfSize $_.TotalProvisioned -To 1GB
+                    Array         = $_.Array
+                    Name          = $_.VolumeName
+                    'Size (GB)'   = Convert-UnitOfSize $_.Provisioned -To 1GB
                     'Unique (GB)' = Convert-UnitOfSize $_.Unique -To 1GB
                     'Growth (GB)' = Convert-UnitOfSize $_.Growth -To 1GB
-                    'Growth (%)'  = '{0:N}%' -f $_.GrowthPercentage
+                    'Growth (%)'  = '{0:P2}' -f $_.GrowthPercent
                 }
             }
 
-            # Screen output
-            $result | Format-Table -AutoSize
+            # Output
+            $volThatBreachGrowthThreshold
 
             if ($Html) {
                 Write-Host 'Building HTML report as requested. Please wait...' -ForegroundColor Yellow
@@ -1499,7 +1690,7 @@ function Get-Pfa2VolumeGrowth() {
         }
         else {
             Write-Host 'No volumes on the array(s) match the requested criteria.'
-            Write-Host ' '
+            Write-Host ''
         }
     }
 }
@@ -1560,6 +1751,26 @@ function Clear-Pfa2Credential {
     [OutputType([void])]
 
     $script:Creds = $null
+}
+
+function Get-SizeLabel {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        $Size,
+        $Decimals = 2
+    )
+
+    begin {
+        $postfixes = @('B', 'KB', 'MB', 'GB', 'TB', 'PB')
+    }
+
+    process {
+        for ($i = 0; $Size -ge 1024 -and $i -lt $postfixes.Length; $i++) {
+            $Size = $Size / 1024
+        }
+        return '' + [System.Math]::Round($Size, $Decimals) + ' ' + $postfixes[$i]
+    }
 }
 
 function New-Pfa2CapacityReport() {
@@ -1663,8 +1874,8 @@ function New-Pfa2CapacityReport() {
             $datardx = "{0:N2}" -f $volume.Space.DataReduction
             $dataTP = "{0:N3}" -f $volume.Space.ThinProvisioning
             $WrittenSpace = "{0:N2}" -f (((1 - $volume.Space.ThinProvisioning) * $volume.Space.TotalPhysical) / 1GB)
-            if ($volume.Space.shared_space) {
-                $dataSS = "{0:N2}" -f $volume.Space.shared_space
+            if ($volume.Space.shared) {
+                $dataSS = "{0:N2}" -f $volume.Space.shared
             }
             else {
                 $dataSS = "None"

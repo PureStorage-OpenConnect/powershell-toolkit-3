@@ -1498,7 +1498,7 @@ function Test-Item() {
         }
     }
     else {
-        Write-TestLog "$header has not recommended value" -Severity Failed @p
+        Write-TestLog "$header does not have recommended value" -Severity Failed @p
     }
 }
 
