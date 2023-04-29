@@ -75,7 +75,7 @@ RequiredModules = @(
     },
     @{
         ModuleName = 'dbatools'
-        ModuleVersion = '1.1.146'
+        ModuleVersion = '1.0.173'
     }
 )
 

@@ -47,5 +47,5 @@ function Import-ModuleManually {
     }
 }
 
-'PureStoragePowershellToolkit.FlashArray',
-'PureStoragePowershellToolkit.DatabaseTools' | Import-ModuleManually
+'PureStoragePowerShellToolkit.FlashArray',
+'PureStoragePowerShellToolkit.DatabaseTools' | Import-ModuleManually
