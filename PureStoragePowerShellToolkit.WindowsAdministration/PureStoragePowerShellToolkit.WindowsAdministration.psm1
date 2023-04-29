@@ -765,7 +765,7 @@ function New-Pfa2VolumeShadowCopy() {
     }
 }
 
-function Register-Pfa2HostVolumes() {
+function Mount-Pfa2HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to online.
@@ -778,57 +778,57 @@ function Register-Pfa2HostVolumes() {
     .OUTPUTS
     None
     .EXAMPLE
-    Register-Pfa2HostVolumes
+    Mount-Pfa2HostVolumes
 
     Set Pure FlashArray connected disks to online.
 
     .EXAMPLE
-    Register-Pfa2HostVolumes -CimSession 'myComputer'
+    Mount-Pfa2HostVolumes -CimSession 'myComputer'
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Register-Pfa2HostVolumes -CimSession $session
+    Mount-Pfa2HostVolumes -CimSession $session
     Get-Pfa2HostBusAdapter -CimSession $session
 
     Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Mount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Mount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Set to online all Pure FlashArray connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Register-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Mount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Set to online all Pure FlashArray connected to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Register-Pfa2HostVolumes
+    'myComputer' | Mount-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Register-Pfa2HostVolumes
+    $session | Mount-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Register-Pfa2HostVolumes
+    'myComputer01', 'myComputer02' | Mount-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Register-Pfa2HostVolumes
+    $prod | Mount-Pfa2HostVolumes
 
     Set to online all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
@@ -1559,7 +1559,7 @@ function Write-Logo()
     Write-Host ''
 }
 
-function Unregister-Pfa2HostVolumes() {
+function Dismount-Pfa2HostVolumes() {
     <#
     .SYNOPSIS
     Sets Pure FlashArray connected disks to offline.
@@ -1572,57 +1572,57 @@ function Unregister-Pfa2HostVolumes() {
     .OUTPUTS
     None
     .EXAMPLE
-    Unregister-Pfa2HostVolumes
+    Dismount-Pfa2HostVolumes
 
     Set Pure FlashArray connected disks to offline.
 
     .EXAMPLE
-    Unregister-Pfa2HostVolumes -CimSession 'myComputer'
+    Dismount-Pfa2HostVolumes -CimSession 'myComputer'
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    Unregister-Pfa2HostVolumes -CimSession $session
+    Dismount-Pfa2HostVolumes -CimSession $session
     Get-Pfa2HostBusAdapter -CimSession $session
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' and gets host bus adapter 
     with previously created CIM session.
 
     .EXAMPLE
-    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
+    Dismount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential $Creds)
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in variable $Creds.
 
     .EXAMPLE
-    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
+    Dismount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Secret admin))
 
     Set to offline all Pure FlashArray disks connected to 'myComputer' with credentials stored in a secret vault.
 
     .EXAMPLE
-    Unregister-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
+    Dismount-Pfa2HostVolumes -CimSession (New-CimSession 'myComputer' -Credential (Get-Credential))
 
     Set to offline all Pure FlashArray disks connected to 'myComputer'. Asks for credentials.
 
     .EXAMPLE
-    'myComputer' | Unregister-Pfa2HostVolumes
+    'myComputer' | Dismount-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
 
     .EXAMPLE
     $session = New-CimSession 'myComputer' -Credential (Get-Credential)
-    $session | Unregister-Pfa2HostVolumes
+    $session | Dismount-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' and gets host bus adapter with previously created CIM session.
 
     .EXAMPLE
-    'myComputer01', 'myComputer02' | Unregister-Pfa2HostVolumes
+    'myComputer01', 'myComputer02' | Dismount-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer01' and 'myComputer02' with current credentials.
 
     .EXAMPLE
     $prod = [pscustomobject]@{Caption = 'Prod Server'; CimSession = 'myComputer'}
-    $prod | Unregister-Pfa2HostVolumes
+    $prod | Dismount-Pfa2HostVolumes
 
     Set to offline all Pure FlashArray connected to 'myComputer' with current credentials.
     #>
@@ -1764,8 +1764,8 @@ Export-ModuleMember -Function Set-Pfa2WindowsPowerScheme
 Export-ModuleMember -Function New-Pfa2VolumeShadowCopy
 Export-ModuleMember -Function Enable-Pfa2SecureChannelProtocol
 Export-ModuleMember -Function Disable-Pfa2SecureChannelProtocol
-Export-ModuleMember -Function Register-Pfa2HostVolumes
-Export-ModuleMember -Function Unregister-Pfa2HostVolumes
+Export-ModuleMember -Function Mount-Pfa2HostVolumes
+Export-ModuleMember -Function Dismount-Pfa2HostVolumes
 Export-ModuleMember -Function Update-Pfa2DriveInformation
 Export-ModuleMember -Function Test-Pfa2WindowsBestPractices
 # END
