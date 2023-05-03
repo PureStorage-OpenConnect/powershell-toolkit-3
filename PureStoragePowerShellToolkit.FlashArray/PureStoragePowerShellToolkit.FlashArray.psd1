@@ -77,7 +77,10 @@ RequiredModules = @(
 )
 
 # Assemblies that must be loaded prior to importing this module
-RequiredAssemblies = @()
+RequiredAssemblies = @(
+    'DocumentFormat.OpenXml.dll',
+    'System.IO.Packaging.dll'
+)
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
 ScriptsToProcess = @()
@@ -109,6 +112,8 @@ FunctionsToExport = @(
     'Sync-Pfa2Hosts',
     'New-Pfa2PGroupVolumes',
     'New-Pfa2CapacityReport',
+    'Export-Pfa2Excel',
+    'New-Pfa2ExcelReport',
     'Get-Pfa2Credential',
     'Set-Pfa2Credential',
     'Clear-Pfa2Credential'

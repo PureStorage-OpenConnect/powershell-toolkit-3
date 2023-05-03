@@ -20,13 +20,15 @@
 #>
 
 #Requires -Version 5
+#Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.0.3' }
 
 #region Helper functions
 
 function Convert-UnitOfSize {
     [CmdletBinding()]
     param (
-        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [AllowNull()]
         $Value,
         $To = 1GB,
         $From = 1,
@@ -683,6 +685,187 @@ function Get-Diagnostic() {
         }
 
         Write-Host "Retrieving $header completed." -ForegroundColor Green
+    }
+}
+
+function New-Pfa2HypervClusterVolumeReport() {
+    <#
+    .SYNOPSIS
+    Creates a Excel report on volumes connected to a Hyper-V cluster.
+    .DESCRIPTION
+    This creates separate CSV files for VM, Windows Hosts, and FlashArray information for each endpoint specified that is part of a HyperV cluster. It then takes that output and places it into a an Excel workbook that contains sheets for each CSV file.
+    .PARAMETER Endpoint
+    Required. An IP address or FQDN of the FlashArray. Multiple endpoints can be specified.
+    .PARAMETER VmCsvFileName
+    Optional. Defaults to VMs.csv.
+    .PARAMETER WinCsvFileName
+    Optional. defaults to WindowsHosts.csv.
+    .PARAMETER PfaCsvFileName
+    Optional. defaults to FlashArrays.csv.
+    .PARAMETER ExcelFile
+    Optional. defaults to HypervClusterReport.xlsx.
+    .INPUTS
+    Endpoint is mandatory. VM, Win, and PFA csv file names are optional.
+    .OUTPUTS
+    Outputs individual CSV files and creates an Excel workbook that is built using the required PowerShell module ImportExcel, created by Douglas Finke.
+    .EXAMPLE
+    New-Pfa2HypervClusterVolumeReport -Endpoint myarray -VmCsvName myVMs.csv -WinCsvName myWinHosts.csv -PfaCsvName myFlashArray.csv -ExcelFile myExcelFile.xlsx
+
+    This will create three separate CSV files with HyperV cluster information and incorporate them into a single Excel workbook.
+
+    .EXAMPLE
+    New-Pfa2HypervClusterVolumeReport -Endpoint 'myarray01', 'myarray02'
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray01, and myarray02.
+
+    .EXAMPLE
+    Get-Content '.\arrays.txt' | New-Pfa2HypervClusterVolumeReport
+
+    This will create files with HyperV cluster information, and FlashArray information for each array in the arrays.txt file.
+
+    .EXAMPLE
+    New-Pfa2HypervClusterVolumeReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential)
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .EXAMPLE
+    $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
+    $endpoint | New-Pfa2HypervClusterVolumeReport
+
+    This will create files with HyperV cluster information, and FlashArray information for myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .NOTES
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
+    #>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Endpoint,
+        [string]$VmCsvFileName = "VMs.csv",
+        [string]$WinCsvFileName = "WindowsHosts.csv",
+        [string]$PfaCsvFileName = "FlashArrays.csv",
+        [string]$ExcelFile = "HypervClusterReport.xlsx",
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-Pfa2Credential )
+    )
+
+    begin {
+        #Validate modules
+        $modules = @('Hyper-V', 'FailoverClusters')
+        foreach ($module in $modules) {
+            if (-not (Get-Module -ListAvailable $module)) {
+                Write-Error "Required module $module not found"
+                return
+            }
+        }
+
+        $report = @{}
+    
+        #Get VMs & VHDs
+        $nodes = Get-ClusterNode
+        $vhds = Get-VM -ComputerName $nodes.Name |
+            ForEach-Object { $_ } -PipelineVariable 'vm' |
+            ForEach-Object { Get-Vhd -ComputerName $_.ComputerName -VmId $_.VmId } |
+            ForEach-Object {
+                [pscustomobject]@{
+                    'VM Name'           = $vm.Name
+                    'VM State'          = $vm.State
+                    'ComputerName'      = $_.ComputerName
+                    'Path'              = $_.Path
+                    'VHD Type'          = $_.VhdType
+                    'Size (GB)'         = Convert-UnitOfSize $_.Size -To 1GB
+                    'Size on disk (GB)' = Convert-UnitOfSize $_.FileSize -To 1GB
+                }
+            }
+
+        if ($vhds) {
+            $vhds | Export-Csv $VmCsvFileName -NoTypeInformation
+            $report['VMs'] = $vhds
+        }
+
+        #Get hosts and volumes
+        $volumes = $nodes |
+            ForEach-Object { $_ } -PipelineVariable 'node' |
+            ForEach-Object {
+                Get-Disk -CimSession $node.Name |
+                Where-Object Number -ne $null |
+                Get-Partition |
+                Get-Volume
+            } |
+            Where-Object DriveType -eq Fixed |
+            ForEach-Object {
+                [pscustomobject]@{
+                    'ComputerName'      = $node.Name
+                    'Label'             = $_.FileSystemLabel
+                    'Name'              = if ($_.DriveLetter) { "$($_.DriveLetter):\" } else { $_.Path }
+                    'Total size (GB)'   = Convert-UnitOfSize $_.Size -To 1GB
+                    'Free space (GB)'   = Convert-UnitOfSize $_.SizeRemaining -To 1GB
+                    'Size on disk (GB)' = Convert-UnitOfSize ($_.Size - $_.SizeRemaining) -To 1GB
+                }
+            }
+
+        if ($volumes) {
+            $volumes | Export-Csv $WinCsvFileName -NoTypeInformation
+            $report['Windows Hosts'] = $volumes
+        }
+
+        #Get Pure volumes
+        $sn = $vhds | 
+            ForEach-Object { Get-Volume -FilePath $_.Path -CimSession $_.ComputerName } | 
+            Group-Object 'ObjectId' | 
+            ForEach-Object { $_.Group[0] } | 
+            Get-Partition | 
+            Get-Disk | 
+            Select-Object -ExpandProperty 'SerialNumber'
+
+        $pureVolumes = @()
+    }
+
+    process {
+        #Run through each array
+        foreach ($e in $Endpoint) {
+            #Connect to FlashArray
+            try {
+                $flashArray = Connect-Pfa2Array -Endpoint $e -Credential $Credential -IgnoreCertificateError
+            }
+            catch {
+                $ExceptionMessage = $_.Exception.Message
+                Write-Error "Failed to connect to FlashArray endpoint $e with: $ExceptionMessage"
+                return
+            }
+
+            #FlashArray volumes
+            try {
+                $details = Get-Pfa2Array -Array $flasharray
+
+                $pureVolumes += Get-Pfa2Volume -Array $flashArray |
+                    Where-Object { $sn -contains $_.serial } |
+                    Select-Object 'Name' -ExpandProperty 'Space' |
+                    ForEach-Object {
+                        [pscustomobject]@{
+                            'Array'             = $details.Name
+                            'Name'              = $_.Name
+                            'Size (GB)'         = Convert-UnitOfSize $_.TotalProvisioned -To 1GB
+                            'Size on disk (GB)' = Convert-UnitOfSize $_.TotalPhysical -To 1GB
+                            'Data Reduction'    = [math]::round($_.DataReduction, 2)
+                        }
+                    }
+            }
+            finally {
+                Disconnect-Pfa2Array -Array $flashArray
+            }
+        }
+    }
+
+    end {
+        if ($pureVolumes) {
+            $pureVolumes | Export-Csv $PfaCsvFileName -NoTypeInformation
+            $report['FlashArrays'] = $pureVolumes
+        }
+
+        Export-Pfa2Excel -Tables $report -LiteralPath $ExcelFile
     }
 }
 
@@ -1768,4 +1951,5 @@ Export-ModuleMember -Function Mount-Pfa2HostVolumes
 Export-ModuleMember -Function Dismount-Pfa2HostVolumes
 Export-ModuleMember -Function Update-Pfa2DriveInformation
 Export-ModuleMember -Function Test-Pfa2WindowsBestPractices
+Export-ModuleMember -Function New-Pfa2HypervClusterVolumeReport
 # END

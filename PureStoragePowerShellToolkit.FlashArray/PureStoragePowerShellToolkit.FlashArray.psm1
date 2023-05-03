@@ -27,7 +27,8 @@
 function Convert-UnitOfSize {
     [CmdletBinding()]
     param (
-        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [AllowNull()]
         $Value,
         $To = 1GB,
         $From = 1,
@@ -335,6 +336,342 @@ class PgroupConfig : ArrayEntity {
             $this.PerDay             = $perDay
 
             $this.Members = (@($this.HostGroups, $this.Hosts, $this.Volumes) -ne $null)[0]
+    }
+}
+
+$stylesheetRawXml = @"
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac x16r2 xr"
+    xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"
+    xmlns:x16r2="http://schemas.microsoft.com/office/spreadsheetml/2015/02/main"
+    xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision">
+    <numFmts count="1">
+        <numFmt numFmtId="164" formatCode="m/d/yy\ h:mm;@"/>
+    </numFmts>
+    <fonts count="1" x14ac:knownFonts="1">
+        <font>
+            <sz val="11"/>
+            <color theme="1"/>
+            <name val="Calibri"/>
+            <family val="2"/>
+            <scheme val="minor"/>
+        </font>
+    </fonts>
+    <fills count="2">
+        <fill>
+            <patternFill patternType="none"/>
+        </fill>
+        <fill>
+            <patternFill patternType="gray125"/>
+        </fill>
+    </fills>
+    <borders count="1">
+        <border>
+            <left/>
+            <right/>
+            <top/>
+            <bottom/>
+            <diagonal/>
+        </border>
+    </borders>
+    <cellStyleXfs count="1">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    </cellStyleXfs>
+    <cellXfs count="2">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+        <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+    </cellXfs>
+    <cellStyles count="1">
+        <cellStyle name="Normal" xfId="0" builtinId="0"/>
+    </cellStyles>
+    <dxfs count="0"/>
+    <tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>
+    <extLst>
+        <ext uri="{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}"
+            xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
+            <x14:slicerStyles defaultSlicerStyle="SlicerStyleLight1"/>
+        </ext>
+        <ext uri="{9260A510-F301-46a8-8635-F512D64BE5F5}"
+            xmlns:x15="http://schemas.microsoft.com/office/spreadsheetml/2010/11/main">
+            <x15:timelineStyles defaultTimelineStyle="TimeSlicerStyleLight1"/>
+        </ext>
+    </extLst>
+</styleSheet>
+"@
+
+function Invoke-GenericMethod {
+    <#
+    .SYNOPSIS
+    Invoke a generic method on a non-generic type: 
+    #> 
+    [CmdletBinding()]
+    param( 
+        [Parameter(Mandatory)]
+        $Instance, 
+        [Parameter(Mandatory)]
+        [string] $MethodName, 
+        [Parameter(Mandatory=$false)]
+        [Type[]] $TypeParameters = ($MethodParameters | ForEach-Object { $_.GetType() }),
+        [Parameter(Mandatory=$false)]
+        [object[]] $MethodParameters = @()
+    ) 
+
+    ## Determine if the types in $set1 match the types in $set2, replacing generic
+    ## parameters in $set1 with the types in $genericTypes
+    function ParameterTypesMatch([type[]] $Set1, [type[]] $Set2, [type[]] $GenericTypes) {
+        $typeReplacementIndex = 0
+        $currentTypeIndex = 0
+
+        ## Exit if the set lengths are different
+        if ($Set1.Count -ne $Set2.Count) {
+            return $false
+        }
+
+        ## Go through each of the types in the first set
+        foreach ($type in $Set1) {
+            ## If it is a generic parameter, then replace it with a type from
+            ## the $genericTypes list
+            if ($type.IsGenericParameter) {
+                $type = $GenericTypes[$typeReplacementIndex]
+                $typeReplacementIndex++
+            }
+
+            ## Check that the current type (i.e.: the original type, or replacement
+            ## generic type) matches the type from $set2
+            if ($type -ne $Set2[$currentTypeIndex]) {
+                return $false
+            }
+
+            $currentTypeIndex++
+        }
+
+        return $true
+    }
+
+    ## Determine the type that we will call the generic method on. Initially, assume
+    ## that it is actually a type itself.
+    $type = $Instance
+
+    ## If it is not, then it is a real object, and we can call its GetType() method
+    if ($Instance -isnot 'Type') {
+        $type = $Instance.GetType()
+    }
+
+    ## Search for the method that:
+    ##    - has the same name
+    ##    - is public
+    ##    - is a generic method
+    ##    - has the same parameter types
+    foreach ($method in $type.GetMethods()) {
+        # Write-Host $method.Name
+        if (($method.Name -eq $methodName) -and 
+                ($method.IsPublic) -and 
+                ($method.IsGenericMethod)) {
+            $parameterTypes = @($method.GetParameters() | ForEach-Object { $_.ParameterType })
+            $methodParameterTypes = @($MethodParameters | ForEach-Object { $_.GetType() })
+            if (ParameterTypesMatch $parameterTypes $methodParameterTypes $TypeParameters) {
+                ## Create a closed representation of it
+                $newMethod = $method.MakeGenericMethod($TypeParameters)
+
+                ## Invoke the method
+                $newMethod.Invoke($Instance, $MethodParameters)
+
+                return
+            }
+        }
+    }
+
+    ## Return an error if we couldn't find that method
+    throw "Could not find method $MethodName"
+}
+
+function Export-Pfa2Excel {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline)]
+        [hashtable]$Tables,
+        [Parameter(Mandatory)]
+        [string]$LiteralPath
+    )
+    begin {
+        if (Test-Path $LiteralPath) {
+            Remove-Item $LiteralPath
+        }
+
+        $workbook = [DocumentFormat.OpenXml.Spreadsheet.Workbook]::new();
+        $sheets = [DocumentFormat.OpenXml.Spreadsheet.Sheets]::new();
+        $workbookPart = $null
+
+        try {
+            $spreadsheetDocument = [DocumentFormat.OpenXml.Packaging.SpreadsheetDocument]::Create($LiteralPath, [DocumentFormat.OpenXml.SpreadsheetDocumentType]::Workbook)
+            $workbookPart = $spreadsheetDocument.AddWorkbookPart()
+            $workbookPart.Workbook = $workbook
+
+            $workbookPart.Workbook.AppendChild($sheets)
+
+            $stylesheet = [DocumentFormat.OpenXml.Spreadsheet.Stylesheet]::new($stylesheetRawXml);
+            $workbookStylesPart = Invoke-GenericMethod $workbookPart AddNewPart -TypeParameters DocumentFormat.OpenXml.Packaging.WorkbookStylesPart
+            $workbookStylesPart.Stylesheet = $stylesheet
+        }
+        catch {
+            if ($spreadsheetDocument) {
+                $spreadsheetDocument.Dispose()
+                $spreadsheetDocument = $null
+            }
+
+            throw
+        }
+
+        $booleanType = [DocumentFormat.OpenXml.EnumValue[DocumentFormat.OpenXml.Spreadsheet.CellValues]]::new([DocumentFormat.OpenXml.Spreadsheet.CellValues]::Boolean)
+        $stringType = [DocumentFormat.OpenXml.EnumValue[DocumentFormat.OpenXml.Spreadsheet.CellValues]]::new([DocumentFormat.OpenXml.Spreadsheet.CellValues]::String)
+        $dateType = [DocumentFormat.OpenXml.EnumValue[DocumentFormat.OpenXml.Spreadsheet.CellValues]]::new([DocumentFormat.OpenXml.Spreadsheet.CellValues]::Date)
+        $numberType = [DocumentFormat.OpenXml.EnumValue[DocumentFormat.OpenXml.Spreadsheet.CellValues]]::new([DocumentFormat.OpenXml.Spreadsheet.CellValues]::Number)
+
+        $dataTypes = @{
+            [DateTime] = $dateType
+            [DateTimeOffset] = $dateType
+            [String] = $stringType
+            [bool] = $booleanType
+            [float] = $numberType
+            [double] = $numberType
+            [decimal] = $numberType
+            [System.SByte] = $numberType
+            [System.Byte] = $numberType
+            [System.Int16] = $numberType
+            [System.UInt16] = $numberType
+            [System.Int32] = $numberType
+            [System.UInt32] = $numberType
+            [System.Int64] = $numberType
+            [System.UInt64] = $numberType
+        }
+    }
+
+    process {
+        $sheetId = 1
+        foreach($table in $Tables.GetEnumerator()) {
+
+            $sheetData = [DocumentFormat.OpenXml.Spreadsheet.SheetData]::new()
+            $worksheet = [DocumentFormat.OpenXml.Spreadsheet.Worksheet]::new($sheetData)
+
+            $worksheetPart = Invoke-GenericMethod $workbookPart AddNewPart -TypeParameters DocumentFormat.OpenXml.Packaging.WorksheetPart
+            $worksheetPart.Worksheet = $worksheet
+
+            $sheet = [DocumentFormat.OpenXml.Spreadsheet.Sheet]::new()
+            $sheet.Id = $workbookPart.GetIdOfPart($worksheetPart)
+            $sheet.SheetId = [DocumentFormat.OpenXml.Uint32Value]::new($sheetId)
+            $sheet.Name = $table.Key
+            $sheets.Append($sheet)
+
+            $valueArray = $table.Value
+            if ($table.Value -isnot [array]) {
+                $valueArray = ,$table.Value
+            }
+
+            $items = @(foreach($valueItem in $valueArray) {
+                $ht = @{}
+
+                $( if ($valueItem -is [hashtable]) { $valueItem.GetEnumerator() } else { $valueItem.PSObject.Properties } ) |
+                ForEach-Object {
+                    $value = if(($null -eq $_.Value) -or $dataTypes.ContainsKey($_.Value.GetType())) { $_.Value } else {[string]$_.Value}
+                    $ht.Add($_.Name, $value )
+                }
+
+                $ht
+            })
+
+            $columns = @($items.Keys | Select-Object -Unique)
+
+            $row = [DocumentFormat.OpenXml.Spreadsheet.Row]::new();
+            $row.RowIndex = [DocumentFormat.OpenXml.Uint32Value]::new(1)
+            $sheetData.Append($row)
+
+            foreach($c in $columns) {
+                $cell = [DocumentFormat.OpenXml.Spreadsheet.Cell]::new();
+                $cell.CellValue = [DocumentFormat.OpenXml.Spreadsheet.CellValue]::new($c);
+                $cell.DataType = $stringType
+                Invoke-GenericMethod $row AppendChild -MethodParameters (,$cell)
+            }
+
+            $rowIndex = 2
+
+            foreach($item in $items) {
+                $row = [DocumentFormat.OpenXml.Spreadsheet.Row]::new();
+                $row.RowIndex = [DocumentFormat.OpenXml.Uint32Value]::new($rowIndex)
+                $sheetData.Append($row)
+                $rowIndex++
+
+                foreach($c in $columns) {
+                    $v = $item[$c]
+                    $cell = [DocumentFormat.OpenXml.Spreadsheet.Cell]::new();
+                    if($null -ne $v) {
+                        $cell.CellValue = [DocumentFormat.OpenXml.Spreadsheet.CellValue]::new($v);
+                        $cell.DataType = $dataTypes[$v.GetType()]
+
+                        if($v -is [datetime]) {
+                            $cell.StyleIndex = [DocumentFormat.OpenXml.Uint32Value]::new(1)
+                        }
+                    }
+
+                    Invoke-GenericMethod $row AppendChild -MethodParameters (,$cell)
+                }
+            }
+
+            if($columns) {
+                $tableColumns = [DocumentFormat.OpenXml.Spreadsheet.TableColumns]::new()
+                foreach($cid in 1..$columns.Count) {
+                    $tc = [DocumentFormat.OpenXml.Spreadsheet.TableColumn]::new()
+                    $tc.Name = [DocumentFormat.OpenXml.StringValue]::new($columns[$cid - 1])
+                    $tc.Id = [DocumentFormat.OpenXml.Uint32Value]::new($cid)
+                    $tableColumns.Append($tc)
+                }
+
+                $tableStyleInfo = [DocumentFormat.OpenXml.Spreadsheet.TableStyleInfo]::new()
+                $tableStyleInfo.ShowRowStripes = [DocumentFormat.OpenXml.BooleanValue]::new($true)
+                $tableStyleInfo.Name = [DocumentFormat.OpenXml.StringValue]::new("TableStyleMedium6")
+
+                $cr = $columns.Count
+                if($cr -lt 27) {
+                    $cn = [char](64 + $cr)
+                } else {
+                    $rem = 0
+                    $cr = [math]::DivRem($cr - 1, 26, [ref] $rem)
+                    $cn = [char](64 + $cr) + [char](65 + $rem)
+                }
+
+                $excelTable = [DocumentFormat.OpenXml.Spreadsheet.Table]::new();
+                $excelTable.Reference = [DocumentFormat.OpenXml.StringValue]::new('A1:' + $cn + (1 + $items.Length))
+                $excelTable.Name = [DocumentFormat.OpenXml.StringValue]::new('Table' + $sheetId)
+                $excelTable.DisplayName = $excelTable.Name
+                $excelTable.Id = [DocumentFormat.OpenXml.Uint32Value]::new($sheetId)
+                $excelTable.TableColumns = $tableColumns
+                $excelTable.AutoFilter = [DocumentFormat.OpenXml.Spreadsheet.AutoFilter]::new()
+                $excelTable.AutoFilter.Reference = $excelTable.Reference
+                $excelTable.TableStyleInfo = $tableStyleInfo
+
+                $tableDefinitionId = 'rId' + $sheetId
+                $tableDefinitionPart = Invoke-GenericMethod $worksheetPart AddNewPart -TypeParameters DocumentFormat.OpenXml.Packaging.TableDefinitionPart -MethodParameters $tableDefinitionId
+                $tableDefinitionPart.Table = $excelTable
+
+                $tablePart = [DocumentFormat.OpenXml.Spreadsheet.TablePart]::new()
+                $tablePart.Id = [DocumentFormat.OpenXml.StringValue]::new($tableDefinitionId)
+                $tableParts = [DocumentFormat.OpenXml.Spreadsheet.TableParts]::new($tablePart)
+                $worksheet.Append($tableParts)
+            }
+
+            $sheetId++
+        }
+    }
+
+    end {
+        if ($spreadsheetDocument) {
+
+            if ($workbookPart.Workbook) {
+                $workbookPart.Workbook.Save()
+            }
+
+            $spreadsheetDocument.Dispose()
+            $spreadsheetDocument = $null
+        }
     }
 }
 
@@ -2756,6 +3093,279 @@ $ReportDateTime
     Write-Host "The report file path $(Resolve-Path $OutHTMLFile)." -ForegroundColor Green
 }
 
+function New-Pfa2ExcelReport {
+    <#
+    .SYNOPSIS
+    Create an Excel workbook that contains FlashArray Information for each endpoint specified.
+    .DESCRIPTION
+    This cmdlet will retrieve array, volume, host, pod, and snapshot capacity information from all of the endpoints and output it to an Excel spreadsheet. Each FlashArray will have it's own filename and the current date and time will be added to the filenames.
+    This cmdlet requires the PowerShell module ImportExcel - https://www.powershellgallery.com/packages/ImportExcel
+    .PARAMETER Endpoint
+    Required. An IP address or FQDN of the FlashArray. Multiple endpoints can be specified.
+    .PARAMETER OutPath
+    Optional. Directory path for Excel workbook. If not specified, the files will be placed in the %temp% folder.
+    .PARAMETER SnapLimit
+    Optional. This will limit the total number of Volume snapshots returned from the arrays. This will be beneficial when working with a large number of snapshots. With a large number of snapshots, and not setting this limit, the worksheet creation time is increased considerably.
+    .PARAMETER Credential
+    Optional. Credential for the FlashArray.
+    .INPUTS
+    None
+    .OUTPUTS
+    An Excel workbook
+    .EXAMPLE
+    New-Pfa2ExcelReport -Endpoint 'myarray.mydomain.com'
+
+    Creates an Excel file in the %temp% folder for array myarray.mydomain.com.
+
+    .EXAMPLE
+    New-Pfa2ExcelReport -Endpoint 'myarray01', 'myarray02' -OutPath '.\reports'
+
+    Creates an Excel file for myarray01 and myarray02. Reports are located in the 'reports' folder.
+
+    .EXAMPLE
+    Get-Content '.\arrays.txt' | New-Pfa2ExcelReport -OutPath '.\reports'
+
+    Creates an Excel file for each array in the arrays.txt file. Reports are located in the 'reports' folder.
+
+    .EXAMPLE
+    New-Pfa2ExcelReport -Endpoint 'myarray.mydomain.com' -Credential (Get-Credential) -OutPath '.\reports'
+
+    Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .EXAMPLE
+    $endpoint = [pscustomobject]@{Endpoint = @('myarray.mydomain.com'); Credential = (Get-Credential)}
+    $endpoint | New-Pfa2ExcelReport -OutPath '.\reports'
+
+    Creates an Excel file in the 'reports' folder for array myarray.mydomain.com. Asks for FlashArray credentials.
+
+    .NOTES
+    This cmdlet can utilize the global credential variable for FlashArray authentication. Set the credential variable by using the command Set-Pfa2Credential.
+    #>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Endpoint,
+        [int]$SnapLimit,
+        [string]$OutPath = $env:Temp,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [pscredential]$Credential = ( Get-Pfa2Credential )
+    )
+
+    begin {
+        $date = (Get-Date).ToString('MMddyyyy_HHmmss')
+    }
+
+    process {
+        # Run through each array
+        foreach ($e in $Endpoint) {
+            Write-Host "Starting to read from array $e ..." -ForegroundColor green
+
+            # Connect to FlashArray(s)
+            try {
+                $flashArray = Connect-Pfa2Array -Endpoint $e -Credential $Credential -IgnoreCertificateError
+            }
+            catch {
+                $exceptionMessage = $_.Exception.Message
+                Write-Error "Failed to connect to FlashArray endpoint $e with: $exceptionMessage"
+                Return
+            }
+
+            try {
+                $array_details = Get-Pfa2Array -Array $flasharray
+                $host_details = Get-Pfa2Host -Array $flasharray -Sort 'name'
+                $hostgroup = Get-Pfa2HostGroup -Array $flasharray
+                $volumes = Get-Pfa2Volume -Array $flasharray -Sort 'name'
+                $pgd = Get-Pfa2ProtectionGroup -Array $flasharray
+                $pgst = Get-Pfa2ProtectionGroupSnapshotTransfer -Array $flasharray -Sort 'name'
+                $controllers = Get-Pfa2Controller -Array $flasharray
+                $controller0_details = $controllers | Where-Object Name -EQ 'CT0'
+                $controller1_details = $controllers | Where-Object Name -EQ 'CT1'
+                $free = $array_details.capacity - $array_details.space.TotalPhysical
+                $lim = @{}
+                if ($PSBoundParameters.ContainsKey('SnapLimit')) {
+                    $lim.Add('Limit', $SnapLimit)
+                }
+                $snapshots = Get-Pfa2VolumeSnapshot -Array $flashArray @lim
+                $pods = Get-Pfa2Pod -Array $flashArray
+            
+                Write-Host 'Read complete. Disconnecting and continuing...' -ForegroundColor green
+            }
+            finally {
+                # Disconnect 'cause we don't need to waste the connection anymore
+                Disconnect-Pfa2Array -Array $flasharray
+            }
+
+            # Name and path the files
+            $excelFile = Join-Path $OutPath "$($array_details.name)-$date.xlsx"
+            Write-Host 'Writing data to Excel workbook...' -ForegroundColor green
+            
+            $report = @{}
+
+            # Array Information
+            $report['Array_Info'] = @( @{
+                    'Array Name'            = ($array_details.Name).ToUpper()
+                    'Array ID'              = $array_details.Id
+                    'Purity Version'        = $array_details.Version
+                    'CT0-Mode'              = $controller0_details.Mode
+                    'CT0-Status'            = $controller0_details.Status
+                    'CT1-Mode'              = $controller1_details.Mode
+                    'CT1-Status'            = $controller1_details.Status
+                    '% Utilized'            = '{0:P}' -f ($array_details.space.TotalPhysical / $array_details.capacity)
+                    'Total Capacity(TB)'    = Convert-UnitOfSize $array_details.Capacity -To 1TB
+                    'Used Capacity(TB)'     = Convert-UnitOfSize $array_details.space.TotalPhysical -To 1TB
+                    'Free Capacity(TB)'     = Convert-UnitOfSize $free -To 1TB
+                    'Provisioned Size(TB)'  = Convert-UnitOfSize $array_details.space.TotalProvisioned -To 1TB
+                    'Unique Data(TB)'       = Convert-UnitOfSize $array_details.space.Unique -To 1TB
+                    'Shared Data(TB)'       = Convert-UnitOfSize $array_details.space.shared -To 1TB
+                    'Snapshot Capacity(TB)' = Convert-UnitOfSize $array_details.space.snapshots -To 1TB
+                } )
+
+            ## Volume Details
+            $details = $volumes | ForEach-Object {
+                @{
+                    'Name'            = $_.Name
+                    'Size(GB)'        = Convert-UnitOfSize $_.provisioned -To 1GB
+                    'Unique Data(GB)' = Convert-UnitOfSize $_.space.Unique -To 1GB
+                    'Shared Data(GB)' = Convert-UnitOfSize $_.space.Shared -To 1GB
+                    'Serial'          = $_.Serial
+                    'ConnectionCount' = $_.ConnectionCount
+                    'Created'         = $_.Created
+                    'Volume Group'    = $_.VolumeGroup.Name 
+                    'Destroyed'       = $_.Destroyed
+                    'Time Remaining'  =
+                    if ($_.TimeRemaining) {
+                        $span = [TimeSpan]::FromMilliseconds($_.TimeRemaining)
+                        '{0:D2}h {1:D2}m' -f ($span.Days * 24 + $span.Hours), $span.Minutes
+                    }
+                } }
+
+            $simple = @()
+            $vvol = @()
+            foreach ($v in $details) {
+                if ($v.Name -like '*vvol*') {
+                    $vvol += $v
+                }
+                else {
+                    $simple += $v
+                }
+            }
+
+            if ($simple) {
+                $report['Volumes-No vVols'] = $simple
+            }
+            else {
+                Write-Host 'No Volumes exist on Array. Skipping.'
+            }
+
+            if ($vvol) {
+                $report['vVol Volumes'] = $vvol
+            }
+            else {
+                Write-Host 'No vVol Volume exist on Array. Skipping.'
+            }
+
+            ## Volume Snapshot details
+            if ($snapshots) {
+                $report['Volume Snapshots'] = $snapshots | ForEach-Object {
+                    @{
+                        'Name'            = $_.Name
+                        'Created'         = $_.Created
+                        'Provisioned(GB)' = Convert-UnitOfSize $_.Provisioned -To 1GB
+                        'Destroyed'       = $_.Destroyed
+                        'Source'          = $_.Source.Name
+                        'Pod'             = $_.pod.name
+                        'Volume Group'    = $_.VolumeGroup.Name
+                    } }
+            }
+            else {
+                Write-Host 'No Volume Snapshots exist on Array. Skipping.'
+            }
+
+            # Host Details
+            if ($host_details) {
+                $report['Hosts'] = $host_details | ForEach-Object {
+                    @{
+                        'Name'           = $_.Name
+                        'No. of Volumes' = $_.ConnectionCount
+                        'HostGroup'      = $_.HostGroup.Name
+                        'Personality'    = $_.Personality
+                        'Allocated(GB)'  = Convert-UnitOfSize $_.space.totalprovisioned -To 1GB
+                        'Wwns'           = $_.Wwns -join ', '
+                    } }
+            }
+            else {
+                Write-Host 'No Hosts exist on Array. Skipping.'
+            }
+            
+            ## HostGroup Details
+            if ($hostgroup) {
+                $report['Host Groups'] = $hostgroup | ForEach-Object {
+                    @{
+                        'Name'           = $_.Name
+                        'HostCount'      = $_.HostCount
+                        'No. of Volumes' = $_.ConnectionCount
+                        'Total Size(GB)' = Convert-UnitOfSize $_.space.totalprovisioned -To 1GB
+                    } }
+            }
+            else {
+                Write-Host 'No Host Groups exist on Array. Skipping.'
+            }
+            
+            ## Protection Group and Protection Group Transfer details
+            if ($pgd) {
+                $report['Protection Groups'] = $pgd | ForEach-Object {
+                    @{
+                        'Name'              = $_.Name
+                        'Snapshot Size(GB)' = Convert-UnitOfSize $_.space.snapshots -To 1GB
+                        'VolumeCount'       = $_.VolumeCount
+                        'Source'            = $_.source.name
+                    } }
+            }
+            else {
+                Write-Host 'No Protection Groups exist on Array. Skipping.'
+            }
+
+            if ($pgst) {
+                $report['PG Snapshot Transfers'] = $pgst | ForEach-Object {
+                    @{
+                        'Name'                       = $_.Name
+                        'Data Transferred(MB)'       = Convert-UnitOfSize $_.DataTransferred -To 1MB
+                        'Destroyed'                  = $_.Destroyed
+                        'Physical Bytes Written(MB)' = Convert-UnitOfSize $_.PhysicalBytesWritten -To 1MB
+                        'Status'                     = $_.Progress -Replace ('1', 'Transfer Complete')
+                    } }
+            }
+            else {
+                Write-Host 'No Protection Group Transfer details on Array. Skipping.'
+            }
+
+            ## Pod details
+            if ($pods) {
+                $report['Pods'] = $pods | ForEach-Object {
+                    @{
+                        'Name'            = $_.Name
+                        'ArrayCount'      = $_.ArrayCount
+                        'Source'          = $_.source.name
+                        'Mediator'        = $_.Mediator
+                        'PromotionStatus' = $_.PromotionStatus
+                        'Destroyed'       = $_.Destroyed
+                    } }
+            }
+            else {
+                Write-Host 'No Pods exist on Array. Skipping.'
+            }
+
+            Export-Pfa2Excel -Tables $report -LiteralPath $excelFile
+        }
+    }
+
+    end {
+        Write-Host "Complete. Files located in $(Resolve-Path $OutPath)" -ForegroundColor green
+    }
+}
+
 function New-Pfa2PGroupVolumes() {
     <#
     .SYNOPSIS
@@ -3158,6 +3768,8 @@ Export-ModuleMember -Function Restore-Pfa2PGroupVolumeSnapshots
 Export-ModuleMember -Function Sync-Pfa2Hosts
 Export-ModuleMember -Function New-Pfa2PGroupVolumes
 Export-ModuleMember -Function New-Pfa2CapacityReport
+Export-ModuleMember -Function Export-Pfa2Excel
+Export-ModuleMember -Function New-Pfa2ExcelReport
 Export-ModuleMember -Function Get-Pfa2Credential
 Export-ModuleMember -Function Set-Pfa2Credential
 Export-ModuleMember -Function Clear-Pfa2Credential
