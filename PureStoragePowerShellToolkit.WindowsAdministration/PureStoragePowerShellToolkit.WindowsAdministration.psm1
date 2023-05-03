@@ -761,7 +761,7 @@ function New-Pfa2HypervClusterVolumeReport() {
             }
         }
 
-        $report = @{}
+        $report = [ordered]@{}
     
         #Get VMs & VHDs
         $nodes = Get-ClusterNode
@@ -769,7 +769,7 @@ function New-Pfa2HypervClusterVolumeReport() {
             ForEach-Object { $_ } -PipelineVariable 'vm' |
             ForEach-Object { Get-Vhd -ComputerName $_.ComputerName -VmId $_.VmId } |
             ForEach-Object {
-                [pscustomobject]@{
+                [pscustomobject][ordered]@{
                     'VM Name'           = $vm.Name
                     'VM State'          = $vm.State
                     'ComputerName'      = $_.ComputerName
@@ -796,7 +796,7 @@ function New-Pfa2HypervClusterVolumeReport() {
             } |
             Where-Object DriveType -eq Fixed |
             ForEach-Object {
-                [pscustomobject]@{
+                [pscustomobject][ordered]@{
                     'ComputerName'      = $node.Name
                     'Label'             = $_.FileSystemLabel
                     'Name'              = if ($_.DriveLetter) { "$($_.DriveLetter):\" } else { $_.Path }
@@ -844,7 +844,7 @@ function New-Pfa2HypervClusterVolumeReport() {
                     Where-Object { $sn -contains $_.serial } |
                     Select-Object 'Name' -ExpandProperty 'Space' |
                     ForEach-Object {
-                        [pscustomobject]@{
+                        [pscustomobject][ordered]@{
                             'Array'             = $details.Name
                             'Name'              = $_.Name
                             'Size (GB)'         = Convert-UnitOfSize $_.TotalProvisioned -To 1GB
