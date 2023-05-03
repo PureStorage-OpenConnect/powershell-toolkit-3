@@ -29,7 +29,7 @@ RootModule = 'PureStoragePowerShellToolkit.DatabaseTools.psm1'
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.3'
+ModuleVersion = '3.0.1'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
@@ -71,11 +71,11 @@ ProcessorArchitecture = ''
 RequiredModules = @(
     @{ 
         ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
-        ModuleVersion = '3.0.0.3'
+        ModuleVersion = '3.0.1'
     },
     @{
         ModuleName = 'dbatools'
-        ModuleVersion = '1.0.173'
+        ModuleVersion = '1.1.146'
     }
 )
 

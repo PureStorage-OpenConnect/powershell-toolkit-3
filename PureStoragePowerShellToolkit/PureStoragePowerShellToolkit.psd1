@@ -29,7 +29,7 @@
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.3'
+ModuleVersion = '3.0.1'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
@@ -71,19 +71,15 @@ ProcessorArchitecture = ''
 RequiredModules = @(
     @{
         ModuleName = 'PureStoragePowerShellToolkit.Core'
-        ModuleVersion = '3.0.0.3'
-    },
-    @{
-        ModuleName = 'PureStoragePowerShellToolkit.Reporting'
-        ModuleVersion = '3.0.0.3'
+        ModuleVersion = '3.0.1'
     },
     @{
         ModuleName = 'PureStoragePowerShellToolkit.WindowsAdministration'
-        ModuleVersion = '3.0.0.3'
+        ModuleVersion = '3.0.1'
     },
     @{
         ModuleName = 'PureStoragePowerShellToolkit.Exchange'
-        ModuleVersion = '3.0.0.3'
+        ModuleVersion = '3.0.1'
     }
 )
 
