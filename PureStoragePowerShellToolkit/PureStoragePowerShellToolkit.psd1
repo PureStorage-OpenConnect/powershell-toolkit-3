@@ -74,10 +74,6 @@ RequiredModules = @(
         ModuleVersion = '3.0.0.3'
     },
     @{
-        ModuleName = 'PureStoragePowerShellToolkit.Reporting'
-        ModuleVersion = '3.0.0.3'
-    },
-    @{
         ModuleName = 'PureStoragePowerShellToolkit.WindowsAdministration'
         ModuleVersion = '3.0.0.3'
     },
