@@ -29,7 +29,7 @@
 
 # Version number of this module.
 
-ModuleVersion = '3.0.0.3'
+ModuleVersion = '3.0.1'
 
 # Supported PSEditions
 #CompatiblePSEditions  = @("Desktop", "Core")
@@ -71,11 +71,11 @@ ProcessorArchitecture = ''
 RequiredModules = @(
     @{
         ModuleName = 'PureStoragePowerShellToolkit.DatabaseTools'
-        ModuleVersion = '3.0.0.3'
+        ModuleVersion = '3.0.1'
     },
     @{
         ModuleName = 'PureStoragePowerShellToolkit.FlashArray'
-        Moduleversion = '3.0.0.3'
+        Moduleversion = '3.0.1'
     }
 )
 
