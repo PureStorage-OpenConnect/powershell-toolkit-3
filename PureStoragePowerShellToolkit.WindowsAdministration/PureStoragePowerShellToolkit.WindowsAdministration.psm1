@@ -1,6 +1,6 @@
 <#
     ===========================================================================
-    Release version: 3.0.0
+    Release version: 3.0.1
     Revision information: Refer to the changelog.md file
     ---------------------------------------------------------------------------
     Maintained by:   FlashArray Integrations and Evangelsigm Team @ Pure Storage
@@ -20,7 +20,7 @@
 #>
 
 #Requires -Version 5
-#Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.0.3' }
+#Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.1' }
 
 #region Helper functions
 
