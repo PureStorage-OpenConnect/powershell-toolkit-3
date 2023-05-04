@@ -489,7 +489,7 @@ function Export-Pfa2Excel {
     [CmdletBinding()]
     param(
         [Parameter(ValueFromPipeline)]
-        [hashtable]$Tables,
+        [System.Collections.IDictionary]$Tables,
         [Parameter(Mandatory)]
         [string]$LiteralPath
     )
@@ -568,9 +568,9 @@ function Export-Pfa2Excel {
             }
 
             $items = @(foreach($valueItem in $valueArray) {
-                $ht = @{}
+                $ht = [ordered]@{}
 
-                $( if ($valueItem -is [hashtable]) { $valueItem.GetEnumerator() } else { $valueItem.PSObject.Properties } ) |
+                $( if ($valueItem -is [System.Collections.IDictionary]) { $valueItem.GetEnumerator() } else { $valueItem.PSObject.Properties } ) |
                 ForEach-Object {
                     $value = if(($null -eq $_.Value) -or $dataTypes.ContainsKey($_.Value.GetType())) { $_.Value } else {[string]$_.Value}
                     $ht.Add($_.Name, $value )
@@ -3201,10 +3201,10 @@ function New-Pfa2ExcelReport {
             $excelFile = Join-Path $OutPath "$($array_details.name)-$date.xlsx"
             Write-Host 'Writing data to Excel workbook...' -ForegroundColor green
             
-            $report = @{}
+            $report = [ordered]@{}
 
             # Array Information
-            $report['Array_Info'] = @( @{
+            $report['Array_Info'] = @( [ordered]@{
                     'Array Name'            = ($array_details.Name).ToUpper()
                     'Array ID'              = $array_details.Id
                     'Purity Version'        = $array_details.Version
@@ -3224,7 +3224,7 @@ function New-Pfa2ExcelReport {
 
             ## Volume Details
             $details = $volumes | ForEach-Object {
-                @{
+                [ordered]@{
                     'Name'            = $_.Name
                     'Size(GB)'        = Convert-UnitOfSize $_.provisioned -To 1GB
                     'Unique Data(GB)' = Convert-UnitOfSize $_.space.Unique -To 1GB
@@ -3269,7 +3269,7 @@ function New-Pfa2ExcelReport {
             ## Volume Snapshot details
             if ($snapshots) {
                 $report['Volume Snapshots'] = $snapshots | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'            = $_.Name
                         'Created'         = $_.Created
                         'Provisioned(GB)' = Convert-UnitOfSize $_.Provisioned -To 1GB
@@ -3286,7 +3286,7 @@ function New-Pfa2ExcelReport {
             # Host Details
             if ($host_details) {
                 $report['Hosts'] = $host_details | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'           = $_.Name
                         'No. of Volumes' = $_.ConnectionCount
                         'HostGroup'      = $_.HostGroup.Name
@@ -3302,7 +3302,7 @@ function New-Pfa2ExcelReport {
             ## HostGroup Details
             if ($hostgroup) {
                 $report['Host Groups'] = $hostgroup | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'           = $_.Name
                         'HostCount'      = $_.HostCount
                         'No. of Volumes' = $_.ConnectionCount
@@ -3316,7 +3316,7 @@ function New-Pfa2ExcelReport {
             ## Protection Group and Protection Group Transfer details
             if ($pgd) {
                 $report['Protection Groups'] = $pgd | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'              = $_.Name
                         'Snapshot Size(GB)' = Convert-UnitOfSize $_.space.snapshots -To 1GB
                         'VolumeCount'       = $_.VolumeCount
@@ -3329,7 +3329,7 @@ function New-Pfa2ExcelReport {
 
             if ($pgst) {
                 $report['PG Snapshot Transfers'] = $pgst | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'                       = $_.Name
                         'Data Transferred(MB)'       = Convert-UnitOfSize $_.DataTransferred -To 1MB
                         'Destroyed'                  = $_.Destroyed
@@ -3344,7 +3344,7 @@ function New-Pfa2ExcelReport {
             ## Pod details
             if ($pods) {
                 $report['Pods'] = $pods | ForEach-Object {
-                    @{
+                    [ordered]@{
                         'Name'            = $_.Name
                         'ArrayCount'      = $_.ArrayCount
                         'Source'          = $_.source.name
