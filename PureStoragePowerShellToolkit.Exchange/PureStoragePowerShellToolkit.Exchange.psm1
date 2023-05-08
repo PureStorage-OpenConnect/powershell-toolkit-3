@@ -23,6 +23,9 @@
 
 $ErrorActionPreference = 'Stop'
 
+Import-Module 'CimCmdlets' -Global
+Import-Module 'Storage' -Global
+
 # Core functions
 $script:exch_snapin = 'Microsoft.Exchange.Management.PowerShell.SnapIn'
 $script:PureProvider = [guid]'781C006A-5829-4A25-81E3-D5E43BD005AB'

@@ -22,6 +22,9 @@
 #Requires -Version 5
 #Requires -Modules @{ ModuleName='PureStoragePowerShellToolkit.FlashArray'; ModuleVersion='3.0.1' }
 
+Import-Module 'CimCmdlets' -Global
+Import-Module 'Storage' -Global
+
 #region Helper functions
 
 function Convert-UnitOfSize {
