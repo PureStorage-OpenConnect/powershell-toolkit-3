@@ -163,7 +163,7 @@ PrivateData = @{
  } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
-HelpInfoURI = 'https://github.com/PureStorage-OpenConnect/powershell-toolkit'
+HelpInfoURI = 'http://connect.pure1.purestorage.com/powershell/PureStoragePowerShellSDK2/2.16'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 DefaultCommandPrefix = ''
