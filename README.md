@@ -15,8 +15,7 @@ The new release includes:
 ### Release Compatibility
 - This release requires PowerShell 5.1 or higher.
 - This release requires .NET 4.5 minimum.
-- This release is compatible with the PowerShell SDK 1.7.4.0 and greater.
-- This release is not yet compatible with the PowerShell SDK version 2.
+- This release is compatible with the PowerShell SDK 2.16.12.0.
 - This release requires a 64-bit operating system.
 
 ### Install and Uninstall
