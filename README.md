@@ -26,7 +26,7 @@ The very latest versions of the Toolkit are always available in this repository 
 The tookit requires the PureStoragePowerShellSDK2 module by default for any functions that connect to a FlashArray. Other modules are also used for further functionaility with SQL Server, Excel output, etc. A built-in global function will attempt to download and install them if they are not present when the cmdlet is launched.
 
 - [Pure Storage PowerShell SDK 2.16](https://www.powershellgallery.com/packages/PureStoragePowerShellSDK2/) (Required)
-- [dbatools 1.0.173](https://www.powershellgallery.com/packages/dbatools/1.0.173) (Required to use Database Tools module)
+- [dbatools 1.0.173](https://www.powershellgallery.com/packages/dbatools/1.0.173) (Required to use Database Tools module. Module will be automatically installed.)
 
 To install the Pure Storage PowerShell Toolkit, open up an elevated Windows PowerShell session and type:
 
@@ -53,11 +53,11 @@ To uninstall the module:
 Uninstall-Module -Module PureStoragePowerShellToolkit
 ```
 
+### Issues 
+[PowerShell Toolkit 2.0 issues](https://github.com/PureStorage-OpenConnect/powershell-toolkit/issues) will be triaged and moved to the Toolkit 3.0 issues as appropriate. 
+
 ### Please contribute!!
 We welcome Pull Requests, issues, and open discussions around the toolkit. Help make the toolkit an invaluable tool!
-
-
-
 
 ### Pure/Code()
 [Join the Pure Storage Code Slack team](https://codeinvite.purestorage.com)
