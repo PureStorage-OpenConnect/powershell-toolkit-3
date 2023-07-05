@@ -16,6 +16,7 @@ The new release includes:
 - This release requires PowerShell 5.1 or higher.
 - This release requires .NET 4.5 minimum.
 - This release is compatible with the PowerShell SDK 2.16.12.0.
+- Database Tools module is compatible with dbatools 1.0.173.
 - This release requires a 64-bit operating system.
 
 ### Install and Uninstall
@@ -24,6 +25,7 @@ The very latest versions of the Toolkit are always available in this repository 
 The tookit requires the PureStoragePowerShellSDK2 module by default for any functions that connect to a FlashArray. Other modules are also used for further functionaility with SQL Server, Excel output, etc. A built-in global function will attempt to download and install them if they are not present when the cmdlet is launched.
 
 - [Pure Storage PowerShell SDK 2.16](https://www.powershellgallery.com/packages/PureStoragePowerShellSDK2/) (Required)
+- [dbatools 1.0.173](https://www.powershellgallery.com/packages/dbatools/1.0.173) (Required to use Database Tools module)
 
 To install the Pure Storage PowerShell Toolkit, open up an elevated Windows PowerShell session and type:
 
