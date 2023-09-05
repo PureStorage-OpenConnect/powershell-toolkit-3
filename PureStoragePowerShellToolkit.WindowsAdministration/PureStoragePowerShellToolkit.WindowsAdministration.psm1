@@ -1495,11 +1495,13 @@ function Test-Pfa2WindowsBestPractices() {
     This cmdlet will retrieve the curretn host infromation, and iterate through several tests around MPIO (FC) and iSCSI OS settings and hardware, indicate whether they are adhearing to Pure Storage FlashArray Best Practices, and offer to alter the settings if applicable.
     All tests can be bypassed with a negative user response when prompted, or simply by using Ctrl-C to break the process.
     .PARAMETER Repair
-    Optional. If this parameter is present, the cmdlet will repair settings to their recommended values.
+    Optional. When this parameter is absent or equals $false, the cmdlet checks settings only and reports any non-recommended value. When the -Repair parameter is present or equals $true, the cmdlet checks each setting and ensures it has the recommended value. By default, the cmdlet asks the user confirmation for every change. While these interactive prompts allow fine user control on every change, they prevent usage of the cmdlet in an unattended script. Use -Force or -Comfirm:$false parameter to suppress confirmation prompts as shown in the example section. For more information about confimation prompts in PowerShell visit [about_CommonParameters](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_commonparameters#-confirm) and [Everything you wanted to know about ShouldProcess](https://learn.microsoft.com/powershell/scripting/learn/deep-dives/everything-about-shouldprocess).
     .PARAMETER IncludeIscsi
     Optional. If this parameter is present, the cmdlet will run tests for iSCSI settings.
     .PARAMETER LogFilePath
     Optional. Specify the full filepath (ex. c:\mylog.log) for logging. If not specified, the default file of %TMP%\BestPractices.log will be used.
+    .PARAMETER Force
+    Optional. When the -Force parameter is present, the cmdlet suppresses interactive comfirmaiton prompts including prompts for repair actions (see Repair parameter description).
     .INPUTS
     Optional parameter for iSCSI testing.
     .OUTPUTS
@@ -1522,7 +1524,7 @@ function Test-Pfa2WindowsBestPractices() {
     .EXAMPLE
     Test-Pfa2WindowsBestPractices -Repair -Confirm:$false
 
-    Run the cmdlet against the local machine, repair settings to their recommended values skipping confirmation prompt.
+    Run the cmdlet against the local machine, repair settings to their recommended values without confirmation prompts.
     #>
 
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
