@@ -41,6 +41,12 @@ To verify the installation:
 Get-Module -Name PureStoragePowerShellToolkit
 ```
 
+To load the module:
+
+```powershell
+Import-Module -Name PureStoragePowerShellToolkit
+```
+
 To see the available cmdlets:
 
 ```powershell
