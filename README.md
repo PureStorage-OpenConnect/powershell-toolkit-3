@@ -47,10 +47,14 @@ To load the module:
 Import-Module -Name PureStoragePowerShellToolkit
 ```
 
-To see the available cmdlets:
+To see the available cmdlets, you must either use a wildcard query or specify the module (flasharray, core, databasetools, exchange, windowsadministration:
 
 ```powershell
-Get-Command -Module PureStoragePowerShellToolkit
+Get-Command -Module PureStoragePowerShellToolkit*
+```
+or
+```powershell
+Get-Command -Module PureStoragePowerShellToolkit.flasharray
 ```
 
 To uninstall the module:
