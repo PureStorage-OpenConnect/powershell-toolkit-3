@@ -2,16 +2,16 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/PureStorage-OpenConnect/powershell-toolkit-3/total?color=orange&label=GitHub%20downloads&logo=powershell&style=plastic) ![PowerShell Gallery](https://img.shields.io/powershellgallery/dt/PureStoragePowerShellToolkit?color=orange&label=PSGallery%20downloads&logo=powershell&style=plastic)
 [![PSScriptAnalyzer](https://github.com/PureStorage-OpenConnect/powershell-toolkit-3/actions/workflows/psanalyzer-toolkitcodecheck.yml/badge.svg?branch=main)](https://github.com/PureStorage-OpenConnect/powershell-toolkit-3/actions/workflows/psanalyzer-toolkitcodecheck.yml)
 
-The Pure Storage PowerShell Toolkit 3.0 is a new beginning for the Toolkit. The original version was released in 2016 and was based on older versions of the Pure Storage PowerShell SDK 1.x release. The Toolkit provides useful cmdlets for customers and the Pure Storage Field Support to use in troubleshooting, monitoring, reporting, best practices, and configuration. The PowerShell Toolkit leverages the Pure Storage PowerShell SDK 2.16 for some of the cmdlets. All references to the PowerShell SDK 1.x have been removed. 
+The Pure Storage PowerShell Toolkit 3.0 is a new beginning for the Toolkit. The original version was released in 2016 and was based on older versions of the Pure Storage PowerShell SDK 1.x release. The Toolkit provides useful cmdlets for customers and the Pure Storage Field Support to use in troubleshooting, monitoring, reporting, best practices, and configuration. The PowerShell Toolkit leverages the Pure Storage PowerShell SDK 2 for some of the cmdlets. All references to the PowerShell SDK 1.x have been removed. 
 
 The new release includes:
 - Separate modules for specific functionality: Database Tools, Windows Administration, FlashArray and Exchange
-- Update from SDK 1.x --> 2.16
+- Update from SDK 1.x --> 2.x
 - Improved error handling
 - Updated Get-Help
 
 ### Release History
-- [PowerShell Toolkit 3.0.1](https://github.com/PureStorage-OpenConnect/powershell-toolkit-3/releases/latest) - June 28, 2023
+- [PowerShell Toolkit 3.0.1](https://github.com/PureStorage-OpenConnect/powershell-toolkit-3/releases/latest)
 
 ### Release Compatibility
 - This release requires PowerShell 5.1 or higher.
